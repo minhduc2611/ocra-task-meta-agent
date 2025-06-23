@@ -56,7 +56,7 @@ def get_all_users(limit: int = 100, offset: int = 0, search: str = "") -> List[D
     """Get all users with pagination"""
     sort = Sort.by_property("created_at", ascending=False)
     if search:
-        filters = Filter.by_property("name").search(search) | Filter.by_property("email").search(search)
+        filters = Filter.by_property("name").like(search) | Filter.by_property("email").like(search)
     else:
         filters = None
     try:

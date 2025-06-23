@@ -127,7 +127,7 @@ def sign_up(auth_request: AuthRequest) -> Dict[str, Any]:
         created_at=datetime.now(UTC),
         updated_at=datetime.now(UTC),
         name=auth_request.name,
-        role=auth_request.role if hasattr(auth_request, 'role') else UserRole.VIEWER.value
+        role=UserRole.STUDENT.value
     )
 
     # Insert user into database

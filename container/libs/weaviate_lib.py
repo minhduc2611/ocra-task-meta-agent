@@ -28,6 +28,7 @@ COLLECTION_USERS = "Users"
 COLLECTION_FILES = "Files"
 COLLECTION_TOKEN_BLACKLIST = "TokenBlacklist"
 COLLECTION_AGENTS = "Agents"
+COLLECTION_AGENT_SETTINGS = "AgentSettings"
 
 def initialize_schema() -> None:
     """Initialize the Weaviate schema if it doesn't exist."""
@@ -147,6 +148,20 @@ def initialize_schema() -> None:
             ]
         )
         print("🙌🏼 Collection Agents created successfully")
+    exists = client.collections.exists(COLLECTION_AGENT_SETTINGS)
+    if not exists:
+        client.collections.create(
+            name=COLLECTION_AGENT_SETTINGS,
+            properties=[
+                wvc.config.Property(name="key", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="label", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="short_label", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="agent_id", data_type=wvc.config.DataType.UUID),
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="updated_at", data_type=wvc.config.DataType.DATE),
+            ]
+        )
+        print("🙌🏼 Collection AgentSettings created successfully")
     print("🙌🏼 Schema initialized successfully")
 
 def upload_documents(documents: List[Dict[str, str]]) -> Dict[str, Any]:

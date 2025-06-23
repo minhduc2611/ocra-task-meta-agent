@@ -38,3 +38,4 @@ from controllers.chat_controller import *
 from controllers.agent_controller import *
 from controllers.buddha_agent_controller import *
 from controllers.user_controller import *
+from controllers.agent_settings_controller import *

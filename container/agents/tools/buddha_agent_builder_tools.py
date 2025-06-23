@@ -7,7 +7,7 @@ from libs.weaviate_lib import client, insert_to_collection, COLLECTION_AGENTS, C
 from datetime import datetime
 import uuid
 from weaviate.collections.classes.filters import Filter
-
+from data_classes.common_classes import AgentStatus
 
 # Buddhist wisdom and teachings database
 BUDDHIST_TEACHINGS = {
@@ -127,7 +127,7 @@ def create_buddhist_agent(
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
             "author": author,
-            "status": "active",
+            "status": AgentStatus.ACTIVE.value,
             "conversation_starters": json.dumps(conversation_starters),
             "tags": json.dumps(tags),
             "agent_type": "buddhist"
@@ -148,7 +148,7 @@ def create_buddhist_agent(
             "language": language,
             "conversation_starters": json.dumps(conversation_starters),
             "tags": json.dumps(tags),
-            "status": "created",
+            "status": AgentStatus.ACTIVE.value,
             "message": f"Buddhist agent '{name}' created successfully with focus on {buddhist_focus} in {language}"
         }
     except Exception as e:
@@ -916,7 +916,6 @@ def update_buddhist_agent(agent_id: str, updates: Dict[str, Any]) -> Dict[str, A
         
         return {
             "agent_id": agent_id,
-            "status": "updated",
             "message": f"Buddhist agent '{existing_agent.properties.get('name', 'Unknown')}' updated successfully",
             "updated_fields": list(update_data.keys())
         }
@@ -953,7 +952,7 @@ def delete_buddhist_agent(agent_id: str) -> Dict[str, Any]:
         
         return {
             "agent_id": agent_id,
-            "status": "deleted",
+            "status": AgentStatus.DELETED.value,
             "message": f"Buddhist agent '{agent_name}' deleted successfully"
         }
     except Exception as e:
@@ -1011,7 +1010,7 @@ def add_buddhist_knowledge_to_context(
             "title": title,
             "category": category,
             "language": language,
-            "status": "success",
+            "status": AgentStatus.ACTIVE.value,
             "message": f"Buddhist knowledge '{title}' added successfully to the knowledge base",
             "content_preview": content[:100] + "..." if len(content) > 100 else content
         }

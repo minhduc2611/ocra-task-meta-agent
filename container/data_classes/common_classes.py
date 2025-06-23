@@ -32,6 +32,11 @@ class AskRequest:
     options: Optional[Dict[str, Any]] = None
     agent_id: Optional[str] = None
 
+class AgentStatus(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    DELETED = "deleted"
+    
 @dataclass
 class Agent:
     name: str
@@ -43,7 +48,7 @@ class Agent:
     created_at: datetime
     updated_at: datetime
     author: str
-    status: str
+    status: AgentStatus
     agent_type: str
     uuid: str
 

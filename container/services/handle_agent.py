@@ -6,6 +6,7 @@ from libs.weaviate_lib import client, insert_to_collection, update_collection_ob
 from datetime import datetime
 import uuid
 import weaviate.classes as wvc
+from data_classes.common_classes import AgentStatus
 
 def create_agent(name: str, description: str, system_prompt: str, tools: List[str], model: str = "gpt-4o-mini", temperature: float = 0, author: str = "system") -> Dict[str, Any]:
     """
@@ -35,7 +36,7 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
             "author": author,
-            "status": "active"
+            "status": AgentStatus.ACTIVE.value
         }
         
         # Store in Weaviate
@@ -45,7 +46,7 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
             "agent_id": agent_id,
             "name": name,
             "description": description,
-            "status": "created",
+            "status": AgentStatus.ACTIVE.value,
             "message": f"Agent '{name}' created successfully with {len(tools)} tools"
         }
     except Exception as e:

@@ -7,7 +7,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from libs.weaviate_lib import client, search_documents, insert_to_collection, update_collection_object, delete_collection_object, COLLECTION_AGENTS
-from data_classes.common_classes import Message, Language
+from data_classes.common_classes import Message, Language, AgentStatus
 from datetime import datetime
 import uuid
 import weaviate.classes as wvc
@@ -45,7 +45,7 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
             "author": author,
-            "status": "active"
+            "status": AgentStatus.ACTIVE.value,
         }
         
         # Store in Weaviate
@@ -55,7 +55,7 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
             "agent_id": agent_id,
             "name": name,
             "description": description,
-            "status": "created",
+            "status": AgentStatus.ACTIVE.value,
             "message": f"Agent '{name}' created successfully with {len(tools)} tools"
         }
     except Exception as e:
