@@ -1,0 +1,15 @@
+flask
+pypdf
+openai
+dotenv
+langchain_openai
+langchain
+langchain_experimental
+langchain_community
+flask-cors
+werkzeug
+PyJWT
+weaviate-client
+youtube-transcript-api
+langgraph
+langchain-core
