@@ -179,6 +179,7 @@ def initialize_schema() -> None:
                 wvc.config.Property(name="status", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="agent_type", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="language", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="corpus_id", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="conversation_starters", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="tags", data_type=wvc.config.DataType.TEXT),
             ]

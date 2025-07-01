@@ -12,11 +12,13 @@ from werkzeug.datastructures import FileStorage
 import tempfile
 from werkzeug.utils import secure_filename
 from vertexai.rag.utils.resources import RagFile
+from google.cloud.aiplatform_v1.services.vertex_rag_data_service.pagers import ListRagFilesPager
 import os
 load_dotenv()
 PROJECT_ID = "llm-project-2d719"
 LOCATION = "global"  
-RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/us-central1/ragCorpora/6917529027641081856"
+RAG_LOCATION = "us-central1"  
+RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/6917529027641081856"
 
 # Optional: Configure chunking for your RAG files
 # You can adjust these values based on your needs
@@ -27,7 +29,7 @@ TRANSFORMATION_CONFIG: TransformationConfig = TransformationConfig(
     ),
 )
 
-vertexai.init(project=PROJECT_ID, location=LOCATION,)
+vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
 
 system_prompt_vi = """
 Bạn là một trợ lý AI được thiết kế để cung cấp những câu trả lời chi tiết, toàn diện và đầy đủ. 
@@ -126,11 +128,11 @@ def generate_gemini_response(
         tools=[rag_retrieval_tool],
         system_instruction=base_system_prompt
     )
-    # For chat, you'd typically send the system instruction first
-    history = messages[:-1]
+    history = messages[:-1].map(lambda x: Content(role=x.role, parts=[Part.from_text(x.content)]))
     chat = model.start_chat(
         history=[
             Content(role="model", parts=[Part.from_text(base_system_prompt)])
+            *history
         ]
     )
     try:
@@ -216,7 +218,7 @@ def add_citations(response):
     return text
 
 def add_file(file: FileStorage, corpus_id: str) -> str:
-    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
     if file.filename == '':
         return "File name is required"
     if file:
@@ -224,11 +226,20 @@ def add_file(file: FileStorage, corpus_id: str) -> str:
         # The upload_file function expects a local file path
         temp_file_path: str = ""
         try:
-            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            # Get the original filename and ensure it has an extension
+            original_filename = file.filename or "uploaded_file"
+            display_name: str = secure_filename(original_filename)
+            
+            # Extract file extension
+            file_extension = ""
+            if "." in original_filename:
+                file_extension = "." + original_filename.split(".")[-1]
+            
+            # Create temporary file with proper extension
+            with tempfile.NamedTemporaryFile(delete=False, suffix=file_extension) as temp_file:
                 file.save(temp_file.name)
                 temp_file_path = temp_file.name
 
-            display_name: str = secure_filename(file.filename or "uploaded_file") # Ensure filename is not None
             rag_file: RagFile = rag.upload_file(
                 corpus_name=full_corpus_path,
                 display_name=display_name,
@@ -242,15 +253,20 @@ def add_file(file: FileStorage, corpus_id: str) -> str:
             if os.path.exists(temp_file_path):
                 os.remove(temp_file_path) # Clean up the temporary file
                 
-def remove_file(file_name: str, corpus_id: str) -> str:
-    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
-    rag.delete_file(file_name, full_corpus_path)
-    return f"File '{file_name}' deleted successfully from RagCorpus."
+def remove_file(file_id: str, corpus_id: str) -> str:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+    file_path = f"{full_corpus_path}/ragFiles/{file_id}"
+    rag.delete_file(file_path, full_corpus_path)
+    return f"File '{file_id}' deleted successfully from RagCorpus."
 
-def get_files(corpus_id: str) -> List[RagFile]:
-    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+def get_files(corpus_id: str) -> ListRagFilesPager:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
     return rag.list_files(full_corpus_path)
 
-def read_one_file(file_name: str, corpus_id: str) -> str:
-    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
-    return rag.get_file(file_name, full_corpus_path)
+def read_one_file(file_id: str, corpus_id: str) -> RagFile:
+    """
+    This one can be improved by upload to gg storage and return the url
+    """
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+    file_path = f"{full_corpus_path}/ragFiles/{file_id}"
+    return rag.get_file(file_path)

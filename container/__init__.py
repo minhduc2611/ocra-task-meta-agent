@@ -37,6 +37,7 @@ from controllers.auth_controller import *
 from controllers.document_controller import *
 from controllers.section_controller import *
 from controllers.file_controller import *
+from controllers.rag_file_controller import *
 from controllers.chat_controller import *
 from controllers.agent_controller import *
 from controllers.buddha_agent_controller import *
