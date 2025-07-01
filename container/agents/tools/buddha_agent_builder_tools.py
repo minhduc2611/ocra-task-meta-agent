@@ -99,7 +99,7 @@ def create_buddhist_agent(
         buddhist_focus: Specific Buddhist focus (e.g., "Buddhist Search & Review", "Buddhist Write Verses", "Buddhist Quiz Questions", "Buddhist Life Guidance")
         language: Language preference ("en" for English, "vi" for Vietnamese)
         system_prompt: Custom system prompt
-        model: The LLM model to use (default: gpt-4o-mini)
+        model: The LLM model to use (gpt-4o-mini, gpt-4o, gemini-2.0-flash-001)
         temperature: Temperature for response generation (default: 0.7)
         author: The user creating the agent
         conversation_starters: List of conversation starters
@@ -153,7 +153,8 @@ def create_buddhist_agent(
         }
     except Exception as e:
         return {"error": f"Failed to create Buddhist agent: {str(e)}"}
-        
+      
+@tool
 def generate_buddhist_system_prompt(focus: str, language: str = "en") -> str:
     """
     Generate a system prompt for a Buddhist agent based on focus area and language.
@@ -239,6 +240,7 @@ def get_buddhist_teachings(category: str = "all", language: str = "en") -> Dict[
         teachings = BUDDHIST_TEACHINGS.get(category, {})
         return {category: teachings.get(language, teachings.get("en", []))}
 
+# deprecated
 @tool
 def create_meditation_guide(duration: int = 10, type: str = "mindfulness") -> str:
     """
@@ -320,6 +322,7 @@ Lie down comfortably or sit with your back supported.
     
     return meditation_guides.get(type, meditation_guides["mindfulness"])
 
+# deprecated
 @tool
 def generate_mindfulness_exercise(context: str = "daily_life") -> str:
     """
@@ -409,6 +412,7 @@ Mindful Stress Relief
     
     return exercises.get(context, exercises["daily_life"])
 
+# deprecated
 @tool
 def create_compassion_practice(target: str = "self") -> str:
     """
@@ -516,6 +520,7 @@ def search_buddhist_agents(query: str, limit: int = 5) -> List[Dict[str, Any]]:
     except Exception as e:
         return [{"error": f"Failed to search Buddhist agents: {str(e)}"}]
 
+# deprecated
 @tool
 def test_buddhist_agent(agent_id: str, test_input: str) -> Dict[str, Any]:
     """
@@ -567,6 +572,8 @@ def test_buddhist_agent(agent_id: str, test_input: str) -> Dict[str, Any]:
     except Exception as e:
         return {"error": f"Failed to test Buddhist agent: {str(e)}"}
 
+
+# deprecated
 @tool
 def create_life_guidance_response(question: str, language: str = "en") -> str:
     """
@@ -592,6 +599,7 @@ I will provide guidance based on Buddhist teachings. Let me reflect on this situ
 
 Could you share more about the specific circumstances so I can provide more appropriate guidance?"""
 
+# deprecated
 @tool
 def create_study_review_material(topic: str, language: str = "en") -> str:
     """
@@ -627,6 +635,7 @@ Based on Buddhist scriptures and teachings, here are the key points to review:
 
 Would you like me to create test questions about this topic?"""
 
+# deprecated
 @tool
 def create_knowledge_test(topic: str, difficulty: str = "medium", language: str = "en") -> str:
     """
@@ -675,6 +684,7 @@ D) [Option D]
 
 Please answer the questions and I will evaluate your knowledge."""
 
+# deprecated
 @tool
 def create_buddhist_poetry(theme: str, style: str = "traditional", language: str = "en") -> str:
     """
@@ -717,7 +727,7 @@ Creation guidance:
 def update_buddhist_agent(agent_id: str, updates: Dict[str, Any]) -> Dict[str, Any]:
     """
     Update an existing Buddhist agent's configuration.
-    
+    When updating system_prompt, try to keep, combine or modify the original system_prompt and suggest the changes to the user.
     Args:
         agent_id: The UUID of the agent to update
         updates: Dictionary containing the fields to update (name, description, buddhist_focus, language, system_prompt, model, temperature, status)

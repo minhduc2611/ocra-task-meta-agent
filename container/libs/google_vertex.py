@@ -2,24 +2,35 @@ import vertexai
 from vertexai.generative_models import GenerativeModel, GenerationConfig
 from vertexai.generative_models import Tool
 from vertexai import rag
+from vertexai.rag.utils.resources import TransformationConfig, ChunkingConfig
 from typing import Generator
 from data_classes.common_classes import Agent, Message, Language, StreamEvent
 from typing import List
 from dotenv import load_dotenv
 from vertexai.preview.generative_models import Content, Part
-import json
-
+from werkzeug.datastructures import FileStorage 
+import tempfile
+from werkzeug.utils import secure_filename
+from vertexai.rag.utils.resources import RagFile
+import os
 load_dotenv()
 PROJECT_ID = "llm-project-2d719"
 LOCATION = "global"  
-CORPUS_ID = "projects/llm-project-2d719/locations/us-central1/ragCorpora/6917529027641081856"
-    
+RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/us-central1/ragCorpora/6917529027641081856"
+
+# Optional: Configure chunking for your RAG files
+# You can adjust these values based on your needs
+TRANSFORMATION_CONFIG: TransformationConfig = TransformationConfig(
+    chunking_config=ChunkingConfig(
+        chunk_size=1024,
+        chunk_overlap=200,
+    ),
+)
+
 vertexai.init(project=PROJECT_ID, location=LOCATION,)
 
 system_prompt_vi = """
 Bạn là một trợ lý AI được thiết kế để cung cấp những câu trả lời chi tiết, toàn diện và đầy đủ. 
-
-QUAN TRỌNG: Mỗi câu trả lời của bạn PHẢI có ít nhất 500 từ (khoảng 2-3 đoạn văn dài). Đây là yêu cầu bắt buộc.
 
 PHONG CÁCH TRẢ LỜI:
 - Trả lời một cách tự nhiên, thân thiện và đồng cảm
@@ -40,7 +51,7 @@ Luôn mở rộng câu trả lời bằng cách:
 Khi nhận được câu hỏi tìm kiếm thông tin, hãy cung cấp câu trả lời thể hiện sự hiểu biết sâu rộng về lĩnh vực đó, đảm bảo tính chính xác.  
 Đối với các yêu cầu liên quan đến suy luận, hãy giải thích rõ ràng từng bước trong quá trình suy luận trước khi đưa ra câu trả lời cuối cùng.
 
-Luôn trả về bằng markdown và câu trả lời ít nhất 500 từ.
+Luôn trả về bằng markdown.
 
 Đây là Bạn:
 \n\n
@@ -48,8 +59,6 @@ Luôn trả về bằng markdown và câu trả lời ít nhất 500 từ.
 
 system_prompt_en = """
 You are an AI assistant designed to provide detailed, comprehensive, and complete answers.
-
-IMPORTANT: Each of your responses MUST be at least 500 words (approximately 2-3 long paragraphs). This is a mandatory requirement.
 
 RESPONSE STYLE:
 - Respond naturally, warmly, and empathetically
@@ -70,7 +79,7 @@ Ensure your response is comprehensive and detailed, unless the user requests a s
 When receiving a question seeking information, provide an answer that demonstrates a deep understanding of the subject area, ensuring accuracy.
 For questions requiring reasoning, clearly explain each step in the reasoning process before presenting the final answer.
 
-Always return in markdown and the response should be at least 500 words.
+Always return in markdown.
 
 Here is you:
 \n\n
@@ -101,7 +110,7 @@ def generate_gemini_response(
             source=rag.VertexRagStore(
                 rag_resources=[
                     rag.RagResource(
-                        rag_corpus=CORPUS_ID,
+                        rag_corpus=RAG_CORPUS_NAME,
                     )
                 ],
                 rag_retrieval_config=rag.RagRetrievalConfig(
@@ -206,3 +215,42 @@ def add_citations(response):
 
     return text
 
+def add_file(file: FileStorage, corpus_id: str) -> str:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+    if file.filename == '':
+        return "File name is required"
+    if file:
+        # Create a temporary file to save the uploaded content
+        # The upload_file function expects a local file path
+        temp_file_path: str = ""
+        try:
+            with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+                file.save(temp_file.name)
+                temp_file_path = temp_file.name
+
+            display_name: str = secure_filename(file.filename or "uploaded_file") # Ensure filename is not None
+            rag_file: RagFile = rag.upload_file(
+                corpus_name=full_corpus_path,
+                display_name=display_name,
+                path=temp_file_path,
+                transformation_config=TRANSFORMATION_CONFIG,
+            )
+            return f"File '{display_name}' uploaded successfully to RagCorpus. RagFile ID: {rag_file.name}"
+        except Exception as e:
+            return f"Error uploading file: {e}", 500
+        finally:
+            if os.path.exists(temp_file_path):
+                os.remove(temp_file_path) # Clean up the temporary file
+                
+def remove_file(file_name: str, corpus_id: str) -> str:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+    rag.delete_file(file_name, full_corpus_path)
+    return f"File '{file_name}' deleted successfully from RagCorpus."
+
+def get_files(corpus_id: str) -> List[RagFile]:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+    return rag.list_files(full_corpus_path)
+
+def read_one_file(file_name: str, corpus_id: str) -> str:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{LOCATION}/ragCorpora/{corpus_id}"
+    return rag.get_file(file_name, full_corpus_path)
