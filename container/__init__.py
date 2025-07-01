@@ -2,6 +2,9 @@
 Buddha-py: A Python application for Buddhist teachings and conversations
 """ 
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from functools import wraps
@@ -39,3 +42,5 @@ from controllers.agent_controller import *
 from controllers.buddha_agent_controller import *
 from controllers.user_controller import *
 from controllers.agent_settings_controller import *
+from controllers.message_controller import *
+from controllers.fine_tuning_model_controller import *

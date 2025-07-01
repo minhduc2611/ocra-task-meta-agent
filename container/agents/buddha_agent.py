@@ -1,8 +1,9 @@
 import os
 from openai import OpenAI
 from typing import List, Dict, Any, Optional
-from data_classes.common_classes import Message, Language, Agent
-from services.handle_agent import get_agent
+from data_classes.common_classes import Message, Language, Agent, AgentStatus
+from datetime import datetime
+from services.handle_agent import get_agent_by_id
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 # Initialize OpenAI client
 client = OpenAI(api_key=OPENAI_API_KEY)
@@ -56,13 +57,13 @@ You are here to guide, not to judge.
 def generate_answer(
     messages: List[Message], 
     contexts: List[Dict[str, str]], 
-    options: Optional[Dict[str, Any]] = None, 
     language: Language = Language.VI, 
     model: str = "gpt-4o",
-    agent_id: Optional[str] = None
+    agent_id: Optional[str] = None,
+    options: Optional[Dict[str, Any]] = None, 
 ) -> str:
     try:
-        agent = get_agent(agent_id)
+        agent = get_agent_by_id(agent_id)
         if not agent or "error" in agent:
             language = language 
             model = model
@@ -79,6 +80,7 @@ def generate_answer(
             f"Source: {ctx['title']}\nContent: {ctx['content']}"
             for ctx in contexts
         ])
+        
         if not system_prompt:
             if language == Language.VI.value:
                 system_prompt = SYSTEM_PROMPT_VI
@@ -109,14 +111,32 @@ def generate_answer(
         )
 
         # For non-streaming case, collect the full response
-        if not options or not options.get("stream", False):
-            full_response = ""
-            for chunk in stream:
-                if chunk.choices[0].delta.content:
-                    full_response += chunk.choices[0].delta.content
-            return full_response
+        # if not options or not options.get("stream", False):
+        #     full_response = ""
+        #     for chunk in stream:
+        #         if chunk.choices[0].delta.content:
+        #             full_response += chunk.choices[0].delta.content
+        #     return full_response
         
         # For streaming case, return the stream
         return stream
     except Exception as e:
         raise Exception(f"Error generating answer: {e}")
+
+
+def get_default_buddha_agent(language: Language = Language.VI) -> Agent:
+    return Agent(
+        name="Buddha Agent",
+        description="Buddha Agent is an AI agent that can answer questions about Buddhist teachings.",
+        tools=[],
+        created_at=datetime.now(),
+        updated_at=datetime.now(),
+        author="Buddha Agent",
+        status=AgentStatus.ACTIVE,      
+        language=language,
+        model="gpt-4o",
+        temperature=0,
+        uuid="buddha_agent",
+        agent_type="buddha_agent",
+        system_prompt=SYSTEM_PROMPT_VI if language == Language.VI else SYSTEM_PROMPT_EN
+    )

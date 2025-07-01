@@ -39,7 +39,8 @@ def create_section(section: Section) -> Section:
         "order": section.order,
         "created_at": now,
         "updated_at": now,
-        "author": section.author
+        "author": section.author,
+        "mode": section.mode
     }
     uuid =  insert_to_collection(COLLECTION_SECTIONS, properties, section.uuid)
     return get_section_by_id(uuid)
@@ -53,7 +54,7 @@ def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dic
         collection_name=COLLECTION_SECTIONS,
         limit=limit,
         offset=offset,
-        properties=["title", "order", "created_at", "updated_at"],
+        properties=["title", "order", "created_at", "updated_at", "mode"],
         sort=Sort.by_property("created_at", ascending=False),
         filters=filters
     )
@@ -72,7 +73,7 @@ def get_section_by_id(section_id: str) -> Section:
     sections = search_non_vector_collection(
         collection_name=COLLECTION_SECTIONS,
         limit=1,
-        properties=["title", "order", "created_at", "updated_at"],
+        properties=["title", "order", "created_at", "updated_at", "mode"],
         filters=filters
     )
 
@@ -82,7 +83,8 @@ def get_section_by_id(section_id: str) -> Section:
         "title": section.title,
         "order": section.order,
         "created_at": section.created_at,
-        "updated_at": section.updated_at
+        "updated_at": section.updated_at,
+        "mode": section.mode
     }
 
 def update_section(section_id: str, section: Section) -> bool:
@@ -91,7 +93,7 @@ def update_section(section_id: str, section: Section) -> bool:
     properties = {
         "title": section.title,
         "order": section.order or 0,
-        "updated_at": now
+        "updated_at": now,
     }
     try:
         update_collection_object(COLLECTION_SECTIONS, section_id, properties)
@@ -115,5 +117,5 @@ def search_sections(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         collection_name=COLLECTION_SECTIONS,
         query=query,
         limit=limit,
-        properties=["title", "order", "created_at", "updated_at"]
+        properties=["title", "order", "created_at", "updated_at", "mode"]
     ) 

@@ -2,7 +2,7 @@ from flask import request, jsonify, g, Response
 from services.handle_agent import (
     create_agent,
     list_agents,
-    get_agent,
+    get_agent_by_id,
     update_agent,
     delete_agent,
     search_agents,
@@ -30,7 +30,7 @@ def create_agent_endpoint():
         tools = body.get('tools', [])
         model = body.get('model', 'gpt-4o-mini')
         temperature = body.get('temperature', 0)
-        
+        language = body.get('language', Language.VI.value)
         result = create_agent(
             name=name,
             description=description,
@@ -38,7 +38,8 @@ def create_agent_endpoint():
             tools=tools,
             model=model,
             temperature=temperature,
-            author=g.user_id
+            author=g.user_id,
+            language=language
         )
         
         return jsonify(result), 201
@@ -68,7 +69,7 @@ def list_agents_endpoint():
 def get_agent_endpoint(agent_id):
     """Get a specific agent"""
     try:
-        agent = get_agent(agent_id)
+        agent = get_agent_by_id(agent_id)
         if "error" in agent:
             return jsonify(agent), 404
         return jsonify(agent), 200

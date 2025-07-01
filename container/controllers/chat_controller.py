@@ -20,7 +20,8 @@ def ask_endpoint(session_id):
             language=body.get('language', Language.VI),
             options=body.get('options'),
             model=body.get('model', 'gpt-4o'),
-            agent_id=body.get('agent_id')
+            agent_id=body.get('agent_id'),
+            mode=body.get('mode'),
         )
         # session_id
         if not session_id:

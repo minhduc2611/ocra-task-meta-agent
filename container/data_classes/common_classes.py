@@ -1,7 +1,19 @@
 from dataclasses import dataclass
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime
 from enum import Enum
+import json
+@dataclass
+class StreamEvent:
+    type: Literal["text", "end_of_stream"]
+    data: str
+    metadata: Optional[Dict[str, Any]] = None
+    def to_dict_json(self):
+        return f"{json.dumps({
+            "type": self.type,
+            "data": self.data,
+            "metadata": self.metadata
+        })}\n"
 
 @dataclass
 class Assistant:
@@ -11,12 +23,23 @@ class Assistant:
     model: str
     description: Optional[str] = None
     tools: Optional[List[dict]] = None
+    
+class ApprovalStatus(Enum):
+    PENDING = "pending"
+    APPROVED = "approved"
+    REJECTED = "rejected"
+    
 @dataclass
 class Message:
     role: str
     content: str
     session_id: Optional[str] = None
     created_at: Optional[str] = None
+    mode: Optional[str] = None
+    feedback: Optional[str] = None
+    edited_content: Optional[str] = None
+    approval_status: Optional[ApprovalStatus] = None
+    response_answer_id: Optional[str] = None
 
 # enum for language
 class Language(Enum):
@@ -31,11 +54,16 @@ class AskRequest:
     language: Language = Language.VI
     options: Optional[Dict[str, Any]] = None
     agent_id: Optional[str] = None
+    mode: Optional[str] = None
 
 class AgentStatus(Enum):
     ACTIVE = "active"
     INACTIVE = "inactive"
     DELETED = "deleted"
+    
+class AgentProvider(Enum):
+    OPENAI = "openai"
+    GOOGLE_VERTEX = "google_vertex"
     
 @dataclass
 class Agent:
@@ -45,6 +73,7 @@ class Agent:
     tools: List[str]
     model: str
     temperature: float
+    language: Language
     created_at: datetime
     updated_at: datetime
     author: str
@@ -68,6 +97,7 @@ class Section:
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
     author: Optional[str] = None
+    mode: Optional[str] = None
 
 @dataclass
 class SignInRequest:
@@ -157,6 +187,31 @@ class AgentRole(Enum):
     USER = "user"
     ASSISTANT = "assistant"
     TOOL = "tool"
+
+class FineTuningStatus(Enum):
+    PENDING = "pending"
+    TRAINING = "training"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+@dataclass
+class FineTuningModel:
+    uuid: Optional[str] = None
+    name: Optional[str] = None
+    description: Optional[str] = None
+    base_model: Optional[str] = None
+    status: Optional[FineTuningStatus] = None
+    language: Optional[Language] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    author: Optional[str] = None
+    training_data_path: Optional[str] = None
+    validation_data_path: Optional[str] = None
+    hyperparameters: Optional[Dict[str, Any]] = None
+    training_metrics: Optional[Dict[str, Any]] = None
+    model_path: Optional[str] = None
+    version: Optional[str] = None
 
 @dataclass
 class AppMessageResponse:

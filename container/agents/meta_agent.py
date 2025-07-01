@@ -3,7 +3,7 @@ import json
 from typing import List, Dict, Any, Optional
 from langgraph.prebuilt import create_react_agent
 from langchain_core.tools import tool
-from langchain_openai import ChatOpenAI
+
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 from libs.weaviate_lib import client, search_documents, insert_to_collection, update_collection_object, delete_collection_object, COLLECTION_AGENTS
@@ -11,10 +11,8 @@ from data_classes.common_classes import Message, Language, AgentStatus
 from datetime import datetime
 import uuid
 import weaviate.classes as wvc
-
-# Initialize OpenAI model
-model = ChatOpenAI(model="gpt-4o-mini", temperature=0)
-
+from libs.langchain import get_langchain_model
+model = get_langchain_model(model="gemini-2.5-flash", temperature=0.7)
 # Tools for the meta agent
 @tool
 def create_agent(name: str, description: str, system_prompt: str, tools: List[str], model: str = "gpt-4o-mini", temperature: float = 0, author: str = "system") -> Dict[str, Any]:

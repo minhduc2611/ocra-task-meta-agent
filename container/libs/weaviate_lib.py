@@ -29,6 +29,7 @@ COLLECTION_FILES = "Files"
 COLLECTION_TOKEN_BLACKLIST = "TokenBlacklist"
 COLLECTION_AGENTS = "Agents"
 COLLECTION_AGENT_SETTINGS = "AgentSettings"
+COLLECTION_FINE_TUNING_MODELS = "FineTuningModels"
 
 def initialize_schema() -> None:
     """Initialize the Weaviate schema if it doesn't exist."""
@@ -62,14 +63,47 @@ def initialize_schema() -> None:
             vectorizer_config=wvc.config.Configure.Vectorizer.text2vec_openai(
                 model=EMBEDDING_MODEL
             ),
+            inverted_index_config=wvc.config.Configure.inverted_index(
+                index_null_state=True,
+            ),
             properties=[
                 wvc.config.Property(name="session_id", data_type=wvc.config.DataType.UUID),
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="role", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="mode", data_type=wvc.config.DataType.TEXT),
+                # for prompt question
+                wvc.config.Property(name="response_answer_id", data_type=wvc.config.DataType.UUID),
+                # for response answer
+                wvc.config.Property(name="feedback", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="edited_content", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="approval_status", data_type=wvc.config.DataType.TEXT),
+                
             ]
         )
         print("🙌🏼 Collection Messages created successfully")
+    exists = client.collections.exists(COLLECTION_FINE_TUNING_MODELS)
+    if not exists:
+        client.collections.create(
+            name=COLLECTION_FINE_TUNING_MODELS,
+            properties=[
+                wvc.config.Property(name="name", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="description", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="base_model", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="status", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="language", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="updated_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="author", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="training_data_path", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="validation_data_path", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="hyperparameters", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="training_metrics", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="model_path", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="version", data_type=wvc.config.DataType.TEXT),
+            ]
+        )
+        print("🙌🏼 Collection FineTuningModels created successfully")
     exists = client.collections.exists(COLLECTION_SECTIONS)
     if not exists:
         client.collections.create(
@@ -81,6 +115,8 @@ def initialize_schema() -> None:
                 wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
                 wvc.config.Property(name="updated_at", data_type=wvc.config.DataType.DATE),
                 wvc.config.Property(name="author", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="mode", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="language", data_type=wvc.config.DataType.TEXT),
             ]
         )
         print("🙌🏼 Collection Sections created successfully")

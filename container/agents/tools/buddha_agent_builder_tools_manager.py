@@ -1,7 +1,6 @@
 import json
 from typing import List, Dict, Any, Optional, Generator
 from langchain_core.tools import tool, BaseTool
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from libs.weaviate_lib import client, insert_to_collection, COLLECTION_AGENTS, COLLECTION_DOCUMENTS, get_object_by_id
 from datetime import datetime
@@ -10,7 +9,6 @@ from weaviate.collections.classes.filters import Filter
 from data_classes.common_classes import ApprovalRequest, MessageType, Language, AppMessageResponse, AgentRole
 from agents.extract_message import extract_message_content
 from agents.tools.buddha_agent_builder_tools import create_buddhist_agent, update_buddhist_agent, delete_buddhist_agent, list_buddhist_agents, get_buddhist_teachings, search_buddhist_agents, test_buddhist_agent, add_buddhist_knowledge_to_context, search_buddhist_knowledge, add_buddhist_teaching_example, add_user_insight_to_knowledge_base, get_buddhist_agent_by_id
-
 class ApprovalManager:
     """Manages pending approvals and execution state"""
     

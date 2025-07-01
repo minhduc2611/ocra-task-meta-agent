@@ -1,14 +1,22 @@
 import json
 from typing import List, Dict, Any, Optional
-from langchain_openai import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate
 from libs.weaviate_lib import client, insert_to_collection, update_collection_object, delete_collection_object, COLLECTION_AGENTS
 from datetime import datetime
 import uuid
 import weaviate.classes as wvc
-from data_classes.common_classes import AgentStatus
-
-def create_agent(name: str, description: str, system_prompt: str, tools: List[str], model: str = "gpt-4o-mini", temperature: float = 0, author: str = "system") -> Dict[str, Any]:
+from data_classes.common_classes import AgentStatus, AgentProvider
+from libs.langchain import get_langchain_model
+def create_agent(
+    name: str, 
+    description: str, 
+    system_prompt: str, 
+    tools: List[str], 
+    model: str = "gpt-4o-mini", 
+    temperature: float = 0, 
+    author: str = "system", 
+    language: str = "en",
+) -> Dict[str, Any]:
     """
     Create a new AI agent with the specified configuration.
     
@@ -20,6 +28,7 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
         model: The LLM model to use (default: gpt-4o-mini)
         temperature: Temperature for response generation (default: 0)
         author: The user creating the agent
+        language: The language of the agent
     
     Returns:
         Dictionary containing the created agent's information
@@ -36,7 +45,8 @@ def create_agent(name: str, description: str, system_prompt: str, tools: List[st
             "created_at": datetime.now(),
             "updated_at": datetime.now(),
             "author": author,
-            "status": AgentStatus.ACTIVE.value
+            "status": AgentStatus.ACTIVE.value,
+            "language": language
         }
         
         # Store in Weaviate
@@ -82,15 +92,15 @@ def list_agents(author: str = "system", limit: int = 10, language: Optional[str]
         for obj in response.objects:
             agent_data = obj.properties
             agent_data["uuid"] = obj.uuid
-            agent_data["conversation_starters"] = json.loads(agent_data["conversation_starters"])
-            agent_data["tags"] = json.loads(agent_data["tags"])
+            agent_data["conversation_starters"] = json.loads(agent_data["conversation_starters"]) if agent_data["conversation_starters"] else []
+            agent_data["tags"] = json.loads(agent_data["tags"]) if agent_data["tags"] else []
             agents.append(agent_data)
         
         return agents
     except Exception as e:
         return [{"error": f"Failed to list agents: {str(e)}"}]
 
-def get_agent(agent_id: str) -> Dict[str, Any]:
+def get_agent_by_id(agent_id: str) -> Dict[str, Any]:
     """
     Get a specific agent's configuration by ID.
     
@@ -126,7 +136,7 @@ def update_agent(agent_id: str, **kwargs) -> Dict[str, Any]:
     """
     try:
         # Get current agent
-        current_agent = get_agent(agent_id)
+        current_agent = get_agent_by_id(agent_id)
         if "error" in current_agent:
             return current_agent
         
@@ -213,7 +223,7 @@ def test_agent(agent_id: str, test_input: str) -> Dict[str, Any]:
     """
     try:
         # Get agent configuration
-        agent_config = get_agent(agent_id)
+        agent_config = get_agent_by_id(agent_id)
         if "error" in agent_config:
             return agent_config
         
@@ -222,7 +232,7 @@ def test_agent(agent_id: str, test_input: str) -> Dict[str, Any]:
         model_name = agent_config.get("model", "gpt-4o-mini")
         temperature = agent_config.get("temperature", 0)
         
-        test_model = ChatOpenAI(model=model_name, temperature=temperature)
+        test_model = get_langchain_model(model=model_name, temperature=temperature)
         
         # Create prompt
         prompt = ChatPromptTemplate.from_messages([

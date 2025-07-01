@@ -13,3 +13,4 @@ weaviate-client
 youtube-transcript-api
 langgraph
 langchain-core
+google-cloud-aiplatform
