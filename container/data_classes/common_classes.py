@@ -80,6 +80,7 @@ class Agent:
     status: AgentStatus
     agent_type: str
     uuid: str
+    corpus_id: Optional[str] = None
 
 @dataclass
 class Pagination:

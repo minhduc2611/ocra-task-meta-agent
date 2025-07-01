@@ -14,6 +14,8 @@ from werkzeug.utils import secure_filename
 from vertexai.rag.utils.resources import RagFile
 from google.cloud.aiplatform_v1.services.vertex_rag_data_service.pagers import ListRagFilesPager
 import os
+from vertexai.rag.utils.resources import RagCorpus
+
 load_dotenv()
 PROJECT_ID = "llm-project-2d719"
 LOCATION = "global"  
@@ -188,7 +190,6 @@ def generate_gemini_response(
         print(f"Error sending grounded message to Gemini: {e}")
         return "Sorry, I couldn't process your request with the knowledge base."
 
-
 def add_citations(response):
     text = response.text
     supports = response.candidates[0].grounding_metadata.grounding_supports
@@ -270,3 +271,21 @@ def read_one_file(file_id: str, corpus_id: str) -> RagFile:
     full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
     file_path = f"{full_corpus_path}/ragFiles/{file_id}"
     return rag.get_file(file_path)
+
+def add_corpus() -> RagCorpus:
+    corpus: RagCorpus = rag.create_corpus()
+    return corpus
+
+def get_corpus(corpus_id: str) -> RagCorpus:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+    return rag.get_corpus(full_corpus_path)
+
+def delete_corpus(corpus_id: str) -> str:
+    full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+    rag.delete_corpus(full_corpus_path)
+    return f"Corpus '{corpus_id}' deleted successfully."
+
+def list_corpora() -> List[RagCorpus]:
+    """List all RAG corpora in the project"""
+    parent = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}"
+    return rag.list_corpora(parent)

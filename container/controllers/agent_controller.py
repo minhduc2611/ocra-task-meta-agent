@@ -9,6 +9,7 @@ from services.handle_agent import (
     test_agent
 )
 from services.handle_ask import handle_ask_streaming, handle_ask_non_streaming, AskError
+from services.handle_rag import handle_upload_file
 import json
 import logging
 import uuid
@@ -165,4 +166,17 @@ def chat_with_agent_endpoint(agent_id):
             )
     except Exception as e:
         logger.error(f"Error chatting with agent: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/agents/<agent_id>/upload', methods=['POST'])
+@login_required
+def upload_file_endpoint(agent_id):
+    """Upload a file to an agent"""
+    try:
+        files = request.files.getlist('files')
+        result = handle_upload_file(files, agent_id)
+        return jsonify(result), 200
+    except Exception as e:      
+        logger.error(f"Error uploading file: {str(e)}")
         return jsonify({"error": str(e)}), 500

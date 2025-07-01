@@ -1,6 +1,7 @@
 from flask import request, jsonify, g
 from werkzeug.datastructures import FileStorage
 from libs.google_vertex import add_file, remove_file, get_files, read_one_file
+from services.handle_agent import get_agent_by_id
 from __init__ import app, login_required
 import logging
 
@@ -19,7 +20,13 @@ def upload_rag_file():
             return jsonify({"error": "No file provided"}), 400
         
         # Get corpus_id from request, use default if not provided
-        corpus_id = request.form.get('corpus_id', DEFAULT_CORPUS_ID)
+        corpus_id = request.form.get('corpus_id', None)
+        agent_id = request.form.get('agent_id', None)
+        if agent_id and not corpus_id:
+            agent = get_agent_by_id(agent_id)
+            corpus_id = agent["corpus_id"]
+        if not corpus_id:
+            return jsonify({"error": "No corpus_id provided"}), 400
         
         results = []
         for file in files:
@@ -46,8 +53,13 @@ def list_rag_files():
     """List all files in RAG corpus"""
     try:
         # Get corpus_id from request, use default if not provided
-        corpus_id = request.args.get('corpus_id', DEFAULT_CORPUS_ID)
-        
+        corpus_id = request.args.get('corpus_id', None)
+        agent_id = request.args.get('agent_id', None)
+        if agent_id and not corpus_id:
+            agent = get_agent_by_id(agent_id)
+            corpus_id = agent["corpus_id"]
+        if not corpus_id:
+            return jsonify({"error": "No corpus_id provided"}), 400
         files = get_files(corpus_id)
         
         # Convert RagFile objects to dictionaries for JSON serialization
@@ -83,7 +95,13 @@ def read_rag_file(file_id):
     """Read content of a specific file from RAG corpus"""
     try:
         # Get corpus_id from request, use default if not provided
-        corpus_id = request.args.get('corpus_id', DEFAULT_CORPUS_ID)
+        corpus_id = request.args.get('corpus_id', None)
+        agent_id = request.args.get('agent_id', None)
+        if agent_id and not corpus_id:
+            agent = get_agent_by_id(agent_id)
+            corpus_id = agent["corpus_id"]
+        if not corpus_id:
+            return jsonify({"error": "No corpus_id provided"}), 400
         
         file_content = read_one_file(file_id, corpus_id)
         
@@ -102,7 +120,13 @@ def delete_rag_file(file_name):
     """Delete a file from RAG corpus"""
     try:
         # Get corpus_id from request, use default if not provided
-        corpus_id = request.args.get('corpus_id', DEFAULT_CORPUS_ID)
+        corpus_id = request.args.get('corpus_id', None)
+        agent_id = request.args.get('agent_id', None)
+        if agent_id and not corpus_id:
+            agent = get_agent_by_id(agent_id)
+            corpus_id = agent["corpus_id"]
+        if not corpus_id:
+            return jsonify({"error": "No corpus_id provided"}), 400
         
         result = remove_file(file_name, corpus_id)
         
@@ -111,33 +135,3 @@ def delete_rag_file(file_name):
     except Exception as e:
         logger.error(f"Error deleting RAG file {file_name}: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
-    """Get information about the RAG corpus"""
-    try:
-        # Get corpus_id from request, use default if not provided
-        corpus_id = request.args.get('corpus_id', DEFAULT_CORPUS_ID)
-        
-        # List files to get corpus info
-        files = get_files(corpus_id)
-        
-        corpus_info = {
-            "corpus_id": corpus_id,
-            "total_files": len(files),
-            "total_size_bytes": sum(file.size_bytes for file in files if file.size_bytes),
-            "files": []
-        }
-        
-        for file in files:
-            file_info = {
-                "name": file.name,
-                "display_name": file.display_name,
-                "size_bytes": file.size_bytes,
-                "state": file.state.value if file.state else None
-            }
-            corpus_info["files"].append(file_info)
-        
-        return jsonify(corpus_info), 200
-        
-    except Exception as e:
-        logger.error(f"Error getting RAG corpus info: {str(e)}")
-        return jsonify({"error": str(e)}), 500 
