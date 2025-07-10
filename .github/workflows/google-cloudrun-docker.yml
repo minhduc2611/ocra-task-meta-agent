@@ -39,6 +39,8 @@ env:
   REGION: 'asia-southeast1'
   SERVICE: 'buddha-rag-prod'
   WORKLOAD_IDENTITY_PROVIDER: 'projects/538009146790/locations/global/workloadIdentityPools/githubpool/providers/github-action-build-backend'
+  SERVICE_ACCOUNT: 'github-action@buddha-rag-prod.iam.gserviceaccount.com'
+
 
 jobs:
   checkout:
@@ -71,6 +73,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
+          service_account: '${{SERVICE_ACCOUNT}}'
 
       - name: 'Docker Auth'
         uses: docker/login-action@v3
