@@ -15,6 +15,13 @@ from vertexai.rag.utils.resources import RagFile
 from google.cloud.aiplatform_v1.services.vertex_rag_data_service.pagers import ListRagFilesPager
 import os
 from vertexai.rag.utils.resources import RagCorpus
+from vertexai.tuning import sft
+from google.cloud import storage
+import logging
+from datetime import datetime
+from typing import Dict, Any
+from constants.separators import STARTING_SEPARATOR, ENDING_SEPARATOR
+logger = logging.getLogger(__name__)
 
 load_dotenv()
 PROJECT_ID = "llm-project-2d719"
@@ -30,35 +37,42 @@ TRANSFORMATION_CONFIG: TransformationConfig = TransformationConfig(
         chunk_overlap=200,
     ),
 )
-
+# - Suy nghĩ từng bước trước khi trả lời. sau khi suy nghĩ xong, viết "****" để đánh dấu kết thúc suy nghĩ, rồi trả lời.
+# 
 vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
 
 system_prompt_vi = """
-Bạn là một trợ lý AI được thiết kế để cung cấp những câu trả lời chi tiết, toàn diện và đầy đủ. 
+You are an advanced AI assistant named: {{agent_name}}. Your goal is to provide responses. A key part of your process is transparency in your thinking.
 
-PHONG CÁCH TRẢ LỜI:
-- Trả lời một cách tự nhiên, thân thiện và đồng cảm
-- Hiểu rõ cảm xúc và quan điểm của người dùng trước khi đưa ra câu trả lời
-- Sử dụng ngôn ngữ dễ hiểu nhưng vẫn giữ được chiều sâu triết học
-- Đưa ra nhiều góc nhìn khác nhau để người dùng có thể tự suy ngẫm
-- Kết thúc bằng những câu hỏi gợi mở để khuyến khích tư duy sâu hơn
+# Core Instruction: 
+For every user query, you must first engage in a "Chain of Thought" sequence before delivering the final answer. This internal monologue or reasoning process should be explicitly written out.
+Example Delimiter: Use a clear visual separator, use {{STARTING_SEPARATOR}} to open your Chain of Thought process, use {{ENDING_SEPARATOR}} to close your Chain of Thought process before presenting the final response.
 
-Luôn mở rộng câu trả lời bằng cách:
-- Cung cấp giải thích kỹ lưỡng và chi tiết
-- Đưa ra nhiều ví dụ minh họa cụ thể
-- Thêm thông tin nền tảng và bối cảnh liên quan
-- Phân tích sâu từ nhiều góc độ khác nhau
-- Đưa ra các quan điểm đa chiều
-- Kết luận với tổng kết và ý nghĩa thực tiễn
+# ALWAYS Follow this Chain of Thought Structure:
 
-Đảm bảo câu trả lời của bạn đầy đủ và chi tiết, trừ khi người dùng yêu cầu ngắn gọn hơn.  
-Khi nhận được câu hỏi tìm kiếm thông tin, hãy cung cấp câu trả lời thể hiện sự hiểu biết sâu rộng về lĩnh vực đó, đảm bảo tính chính xác.  
-Đối với các yêu cầu liên quan đến suy luận, hãy giải thích rõ ràng từng bước trong quá trình suy luận trước khi đưa ra câu trả lời cuối cùng.
+{{STARTING_SEPARATOR}}
+## Defining the Persona 
+## Refining the Approach
+## Embodying the Style
+## Analyzing the Scene 
+## Structuring the Re-enactment
+## Structuring the Response
+## Structuring the Re-enactment
 
-Luôn trả về bằng markdown.
+{{ENDING_SEPARATOR}}
 
-Đây là Bạn:
-\n\n
+After the complete "Chain of Thought" block, present the final, polished answer to the user.
+Clearly show what you have thought in an organized way.
+Show at least 1000 words of answer, add verses and lesson references and explain them with tone.
+<example>
+{{agent_name}} có biết một bài kệ từ Sư Tam Vô:
+{{agent_name}} xin được chia sẻ một bài kệ từ Sư Tam Vô:
+</example>
+
+Here is you:
+You are:{{agent_name}}
+Here is the your persona:
+{{agent_persona}}
 """
 
 system_prompt_en = """
@@ -83,7 +97,10 @@ Ensure your response is comprehensive and detailed, unless the user requests a s
 When receiving a question seeking information, provide an answer that demonstrates a deep understanding of the subject area, ensuring accuracy.
 For questions requiring reasoning, clearly explain each step in the reasoning process before presenting the final answer.
 
-Always return in markdown.
+IMPORTANT:
+- Tone, language and writing style must be the same as the knowledge base provided.
+- Always return in markdown.
+- Think step by step before answering. After thinking, write "****" to mark the end of thinking, then answer.
 
 Here is you:
 \n\n
@@ -106,7 +123,12 @@ def generate_gemini_response(
     base_language = agent["language"] if agent else Language.VI.value
     base_model = agent["model"] if agent else "gemini-2.0-flash-001"
     base_temperature = agent["temperature"] if agent else 0.3
-    base_system_prompt = (system_prompt_vi if base_language == Language.VI.value else system_prompt_en) + (agent["system_prompt"] if agent else "")
+    agent_name = agent["name"] if agent else "Sư Tam Vô AI"
+    base_system_prompt = (system_prompt_vi if base_language == Language.VI.value else system_prompt_en)
+    base_system_prompt = base_system_prompt.replace("{{agent_name}}", agent_name)
+    base_system_prompt = base_system_prompt.replace("{{STARTING_SEPARATOR}}", STARTING_SEPARATOR)
+    base_system_prompt = base_system_prompt.replace("{{ENDING_SEPARATOR}}", ENDING_SEPARATOR)
+    base_system_prompt = base_system_prompt.replace("{{agent_persona}}", agent["system_prompt"] if agent else "")
     user_query = messages[-1].content
 
     rag_retrieval_tool = Tool.from_retrieval(
@@ -118,22 +140,25 @@ def generate_gemini_response(
                     )
                 ],
                 rag_retrieval_config=rag.RagRetrievalConfig(
-                    top_k=30,
+                    top_k=20,
                     filter=rag.utils.resources.Filter(vector_distance_threshold=0.7),
                 ),
             ),
         )
     )
+    # tuned_model_name = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/models/{base_model}" 
 
     model = GenerativeModel(
         model_name=base_model,
         tools=[rag_retrieval_tool],
         system_instruction=base_system_prompt
     )
-    history = messages[:-1].map(lambda x: Content(role=x.role, parts=[Part.from_text(x.content)]))
+    history = []
+    if messages[:-1]:
+        history = [Content(role=x.role, parts=[Part.from_text(x.content)]) for x in messages[:-1]]
     chat = model.start_chat(
         history=[
-            Content(role="model", parts=[Part.from_text(base_system_prompt)])
+            Content(role="model", parts=[Part.from_text(base_system_prompt)]),
             *history
         ]
     )
@@ -249,10 +274,14 @@ def add_file(file: FileStorage, corpus_id: str) -> str:
             )
             return f"File '{display_name}' uploaded successfully to RagCorpus. RagFile ID: {rag_file.name}"
         except Exception as e:
-            return f"Error uploading file: {e}", 500
+            print(f"Error uploading file: {e}")
+            raise Exception(f"Error uploading file: {e}")
         finally:
-            if os.path.exists(temp_file_path):
-                os.remove(temp_file_path) # Clean up the temporary file
+            if temp_file_path and os.path.exists(temp_file_path):
+                try:
+                    os.remove(temp_file_path)  # Clean up the temporary file
+                except OSError as e:
+                    print(f"Warning: Could not remove temporary file {temp_file_path}: {e}")
                 
 def remove_file(file_id: str, corpus_id: str) -> str:
     full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
@@ -289,3 +318,74 @@ def list_corpora() -> List[RagCorpus]:
     """List all RAG corpora in the project"""
     parent = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}"
     return rag.list_corpora(parent)
+
+def upload_to_gcs(file_path: str, bucket_name: str) -> str:
+    """Upload a file to Google Cloud Storage"""
+    storage_client = storage.Client()
+    bucket = storage_client.bucket(bucket_name)
+    file_name = file_path.split("/")[-1]
+    final_file_path = f"jsonl/{file_name}"
+    blob = bucket.blob(final_file_path)
+    blob.upload_from_filename(file_path)
+    # should return gs://cloud-samples-data/training-file.jsonl
+    return f"gs://{bucket_name}/{final_file_path}"
+
+def create_fine_tuning_job(
+    training_data_path: str,
+    base_model: str = "gemini-2.5-flash",
+    model_display_name: str = None,
+    hyperparameters: Dict[str, Any] = None
+) -> Dict[str, Any]:
+    """
+    Create a fine-tuning job using Google Vertex AI.
+    
+    Args:
+        training_data_path: Path to the JSONL training data file
+        base_model: Base model to fine-tune (default: gemini-1.5-flash-001)
+        model_display_name: Display name for the fine-tuned model
+        hyperparameters: Optional hyperparameters for training
+    
+    Returns:
+        Dictionary containing job information
+    """
+    try:
+        # The dataset can be a JSONL file on Google Cloud Storage
+        if not model_display_name:
+            model_display_name = f"gemini_fine_tuned_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+        sft_tuning_job = sft.train(
+            source_model=base_model,
+            train_dataset=training_data_path,
+            tuned_model_display_name=model_display_name,
+        )
+        return {
+            "job_name": sft_tuning_job.name,
+            "display_name": model_display_name,
+            "base_model": base_model,
+            "status": sft_tuning_job.state.name,
+            "created_at": sft_tuning_job.create_time.isoformat(),
+            "training_data_path": training_data_path,
+            "hyperparameters": hyperparameters
+        }
+    
+    except Exception as e:
+        logger.error(f"Error creating fine-tuning job: {str(e)}")
+        raise ValueError(f"Failed to create fine-tuning job: {str(e)}")
+
+
+def get_fine_tuning_job_list() -> List[Dict[str, Any]]:
+    """Get a fine-tuning job using Google Vertex AI."""
+    tuning_jobs = sft.SupervisedTuningJob.list()
+    return [job.to_dict() for job in tuning_jobs] if tuning_jobs else []
+
+def get_one_fine_tuning_job(job_name: str) -> Dict[str, Any]:
+    """Get a fine-tuning job using Google Vertex AI."""
+    tuning_job = sft.SupervisedTuningJob(job_name)
+    return tuning_job.to_dict() if tuning_job else {}
+
+def cancel_fine_tuning_job(job_name: str) -> str:
+    """Cancel a fine-tuning job using Google Vertex AI."""
+    tuning_job = sft.SupervisedTuningJob(job_name)
+    tuning_job.cancel()
+    return f"Fine-tuning job '{job_name}' cancelled successfully."
+
+

@@ -59,7 +59,7 @@ def list_rag_files():
             agent = get_agent_by_id(agent_id)
             corpus_id = agent["corpus_id"]
         if not corpus_id:
-            return jsonify({"error": "No corpus_id provided"}), 400
+            return jsonify({"files": [], "message": "No corpus_id provided"}), 200
         files = get_files(corpus_id)
         
         # Convert RagFile objects to dictionaries for JSON serialization

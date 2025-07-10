@@ -1,11 +1,20 @@
 from data_classes.common_classes import Message
 from typing import List
-from libs.weaviate_lib import search_vector_collection, search_non_vector_collection, update_collection_object, delete_collection_object, get_object_by_id, COLLECTION_MESSAGES
+from libs.weaviate_lib import search_vector_collection, search_non_vector_collection, update_collection_object, delete_collection_object, get_object_by_id, COLLECTION_MESSAGES, insert_to_collection_in_batch, COLLECTION_DOCUMENTS
 from typing import Dict, Any
 from weaviate.collections.classes.filters import Filter
 from weaviate.collections.classes.grpc import Sort
 from datetime import datetime
 import logging
+from data_classes.common_classes import ApprovalStatus
+from libs.weaviate_lib import insert_to_collection
+from libs.jsonl_converter import convert_json_to_jsonl, save_jsonl_to_file, convert_messages_to_fine_tune_format, validate_fine_tune_data
+from google.cloud import aiplatform
+from google.cloud.aiplatform_v1.types import training_pipeline
+from google.cloud.aiplatform_v1.services.pipeline_service import PipelineServiceClient
+from google.cloud.aiplatform_v1.types import pipeline_service
+import uuid
+from libs.google_vertex import upload_to_gcs, create_fine_tuning_job
 
 logger = logging.getLogger(__name__)
 
@@ -53,9 +62,10 @@ def get_messages_list(
     offset: int = 0, 
     session_id: str = None,
     role: str = None,
-    mode: str = None,
+    modes: List[str] = None,
     search: str = None,
-    include_related: bool = True
+    include_related: bool = True,
+    approval_status: ApprovalStatus = None
 ) -> Dict[str, Any]:
     """
     Get a list of messages with pagination and filtering.
@@ -65,10 +75,10 @@ def get_messages_list(
         offset: Number of messages to skip (default: 0)
         session_id: Filter by session ID
         role: Filter by role (user, assistant, system)
-        mode: Filter by mode
+        modes: Filter by modes (fine-tune, chat)
         search: Search in message content
         include_related: Whether to include related messages (default: False for performance)
-    
+        approval_status: Filter by approval status (APPROVED, PENDING, REJECTED)
     Returns:
         Dictionary containing messages and pagination info
     """
@@ -90,13 +100,26 @@ def get_messages_list(
             else:
                 filters = role_filter
         
-        if mode:
-            mode_filter = (Filter.by_property("mode").equal(mode) & Filter.by_property("response_answer_id").is_none(False))
+        if modes and len(modes) > 0:
+            mode_filter = (Filter.by_property("mode").contains_any(modes) & Filter.by_property("response_answer_id").is_none(False))
             if filters:
                 filters = filters & mode_filter
             else:
                 filters = mode_filter
+                
+        if include_related:
+            if filters:
+                filters = filters & Filter.by_property("response_answer_id").is_none(False)
+            else:
+                filters = Filter.by_property("response_answer_id").is_none(False)
         
+        if approval_status: 
+            approval_status_filter = Filter.by_property("approval_status").equal(approval_status)
+            if filters:
+                filters = filters & approval_status_filter
+            else:
+                filters = approval_status_filter
+                
         # Get messages
         if search:
             # Use vector search for content search
@@ -265,4 +288,121 @@ def delete_message(message_id: str) -> Dict[str, Any]:
     except Exception as e:
         return {"error": f"Failed to delete message: {str(e)}"}
 
+def save_q_and_a_pairs_to_system(q_and_a_pairs: List[Dict[str, str]]) -> Dict[str, Any]:
+    """
+    Save Q&A pairs to the system as documents.
+    
+    Args:
+        q_and_a_pairs: List of dictionaries containing 'question' and 'answer' keys
+    
+    Returns:
+        Dictionary containing success/error message and saved document IDs
+    """
+    try:
+        if not q_and_a_pairs:
+            return {"error": "No Q&A pairs provided"}
+        
+        current_time = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        for i, pair in enumerate(q_and_a_pairs):
+            if not isinstance(pair, dict) or 'question' not in pair or 'answer' not in pair:
+                return {"error": f"Invalid Q&A pair format at index {i}"}
+            
+            question = pair['question']
+            answer = pair['answer']
+            response_answer_id = insert_to_collection(
+                collection_name=COLLECTION_MESSAGES,
+                properties={
+                    "content": answer,
+                    "role": "user",
+                    "created_at": current_time,
+                    "mode": "fine-tune"
+                }
+            )
+            insert_to_collection(
+                collection_name=COLLECTION_MESSAGES,
+                properties={
+                    "content": question,
+                    "role": 'assistant',
+                    "created_at": current_time,
+                    "mode": "fine-tune",
+                    "response_answer_id": str(response_answer_id),
+                    "approval_status": ApprovalStatus.APPROVED.value
+                }
+            )
+        
+        return {
+            "message": f"Successfully saved {len(q_and_a_pairs)} Q&A pairs to system",
+            "saved_count": len(q_and_a_pairs),
+        }
+        
+    except Exception as e:
+        logger.error(f"Error saving Q&A pairs to system: {str(e)}")
+        return {"error": f"Failed to save Q&A pairs: {str(e)}"}
 
+
+def fine_tune_messages(messages: List[Dict[str, Any]], base_model: str = "gemini-2.5-flash") -> Dict[str, Any]:
+    """
+    Fine tune messages using Google Vertex AI.
+    
+    Args:
+        messages: List of message dictionaries with the structure:
+                 {
+                   "content": "message content",
+                   "role": "user" or "assistant",
+                   "session_id": "session identifier",
+                   "related_message": {
+                     "content": "related message content",
+                     "role": "user" or "assistant"
+                   }
+                 }
+    
+    Returns:
+        Dictionary containing fine-tuning job information
+    """
+    try:
+        if not messages:
+            return {"error": "No messages provided for fine-tuning"}
+        
+        # Convert messages to the required format for Vertex AI fine-tuning
+        fine_tune_data = convert_messages_to_fine_tune_format(messages)
+        
+        if not fine_tune_data:
+            return {"error": "No valid conversation pairs found for fine-tuning"}
+        
+        logger.info(f"Prepared {len(fine_tune_data)} conversation pairs for fine-tuning")
+        
+        # Validate the data format
+        validate_fine_tune_data(fine_tune_data)
+        
+        # Convert to JSONL format
+        jsonl_content = convert_json_to_jsonl(fine_tune_data)
+        
+        # Save JSONL content to a temporary file
+        temp_file_path = save_jsonl_to_file(jsonl_content)
+        
+        # Upload JSONL file to GCS
+        training_data_path = upload_to_gcs(temp_file_path, "buddha-ai-bucket")
+        
+        # Create fine-tuning job
+        job_info = create_fine_tuning_job(
+            training_data_path=training_data_path,
+            base_model=base_model,
+            model_display_name=f"fine_tuned_model_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            hyperparameters={
+                "epoch_count": 3,
+                "batch_size": 4,
+                "learning_rate": 0.0001
+            }
+        )
+        
+        return {
+            "message": "Fine-tuning job created successfully",
+            "job_info": job_info,
+            "training_pairs_count": len(fine_tune_data),
+            "training_data_path": training_data_path
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fine tuning messages: {str(e)}")
+        return {"error": f"Failed to fine tune messages: {str(e)}"}

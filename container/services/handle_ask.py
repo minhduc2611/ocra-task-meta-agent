@@ -10,6 +10,9 @@ from agents.buddha_agent import get_default_buddha_agent
 from libs.open_ai import generate_openai_answer
 from libs.google_vertex import generate_gemini_response
 from libs.langchain import check_model
+from constants.separators import ENDING_SEPARATOR
+from utils.string_utils import get_text_after_separator
+
 class AskError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         self.message = message
@@ -141,6 +144,8 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                     elif chunk.type == "end_of_stream":
                         yield chunk.to_dict_json()
                 
+                response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
+                
                 # After streaming is complete, save the messages
                 user_time = datetime.now()
                 # test agent dont save messages:
@@ -176,7 +181,8 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                             collection_name=COLLECTION_MESSAGES,
                             properties={
                                 "session_id": body.session_id,
-                                "content": full_response,
+                                "content": response_content,
+                                "thought": response_thought,
                                 "role": "assistant",
                                 "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 "mode": body.mode

@@ -1,4 +1,4 @@
-from flask import request, jsonify, g, Response
+from flask import request, jsonify, g, Response, stream_with_context
 from services.handle_agent import (
     create_agent,
     list_agents,
@@ -172,11 +172,43 @@ def chat_with_agent_endpoint(agent_id):
 @app.route('/api/v1/agents/<agent_id>/upload', methods=['POST'])
 @login_required
 def upload_file_endpoint(agent_id):
-    """Upload a file to an agent"""
+    """Upload a file to an agent with streaming progress updates"""
     try:
         files = request.files.getlist('files')
-        result = handle_upload_file(files, agent_id)
-        return jsonify(result), 200
+        
+        if not files:
+            return jsonify({
+                "error": "No files provided",
+                "status": "error"
+            }), 400
+        
+        def generate():
+            try:
+                for update in handle_upload_file(files, agent_id):
+                    yield f"{json.dumps(update)}\n\n"
+            except Exception as e:
+                error_response = {
+                    "error": str(e),
+                    "status": "error",
+                    "message": f"Upload failed: {str(e)}"
+                }
+                yield f"{json.dumps(error_response)}\n\n"
+        
+        return Response(
+            stream_with_context(generate()),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Cache-Control'
+            }
+        )
+            
     except Exception as e:      
         logger.error(f"Error uploading file: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({
+            "error": str(e),
+            "status": "error",
+            "message": f"Upload failed: {str(e)}"
+        }), 500

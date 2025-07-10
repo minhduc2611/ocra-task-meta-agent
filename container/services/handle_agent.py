@@ -7,6 +7,8 @@ import uuid
 import weaviate.classes as wvc
 from data_classes.common_classes import AgentStatus, AgentProvider
 from libs.langchain import get_langchain_model
+from libs.google_vertex import delete_corpus
+
 def create_agent(
     name: str, 
     description: str, 
@@ -171,6 +173,10 @@ def delete_agent(agent_id: str) -> Dict[str, Any]:
         Success/error message
     """
     try:
+        # delete all files in the agent's corpus
+        agent = get_agent_by_id(agent_id)
+        if agent["corpus_id"]:
+            delete_corpus(agent["corpus_id"])
         success = delete_collection_object(COLLECTION_AGENTS, agent_id)
         
         if success:

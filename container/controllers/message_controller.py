@@ -1,6 +1,6 @@
 from flask import request, jsonify, g
 from __init__ import app, login_required
-from services.handle_messages import update_message, delete_message, get_message_by_id, get_messages_list, MessageError
+from services.handle_messages import update_message, delete_message, get_message_by_id, get_messages_list, MessageError, save_q_and_a_pairs_to_system
 import logging
 
 logger = logging.getLogger(__name__)
@@ -18,16 +18,17 @@ def get_messages_endpoint():
         mode = request.args.get('mode', type=str)
         search = request.args.get('search', type=str)
         include_related = request.args.get('include_related', 'false').lower() == 'true'
-        
+        approval_status = request.args.get('approval_status', type=str)
         # Get messages
         result = get_messages_list(
             limit=limit,
             offset=offset,
             session_id=session_id,
             role=role,
-            mode=mode,
+            modes=[mode],
             search=search,
-            include_related=include_related
+            include_related=include_related,
+            approval_status=approval_status
         )
         
         if "error" in result:
@@ -112,6 +113,56 @@ def get_message_endpoint(message_id):
         return jsonify({"error": e.message}), e.status_code
     except Exception as e:
         logger.error(f"Error in get_message_endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/v1/messages/save-q-and-a-pairs-to-system', methods=['POST'])
+@login_required
+def save_q_and_a_pairs_to_system_endpoint():
+    """Save Q&A pairs to the system as documents"""
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        # Validate required fields
+        q_and_a_pairs = data.get('qAndAPairs')
+        if not q_and_a_pairs:
+            return jsonify({"error": "qAndAPairs field is required"}), 400
+
+        if not isinstance(q_and_a_pairs, list):
+            return jsonify({"error": "qAndAPairs must be a list"}), 400
+
+        # Validate each Q&A pair
+        for i, pair in enumerate(q_and_a_pairs):
+            if not isinstance(pair, dict):
+                return jsonify({"error": f"Q&A pair at index {i} must be an object"}), 400
+            
+            if 'question' not in pair or 'answer' not in pair:
+                return jsonify({"error": f"Q&A pair at index {i} must have 'question' and 'answer' fields"}), 400
+            
+            if not isinstance(pair['question'], str) or not isinstance(pair['answer'], str):
+                return jsonify({"error": f"Q&A pair at index {i} must have string values for 'question' and 'answer'"}), 400
+
+        # Save Q&A pairs to system
+        result = save_q_and_a_pairs_to_system(q_and_a_pairs)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        
+        return jsonify(result), 200
+
+    except Exception as e:
+        logger.error(f"Error in save_q_and_a_pairs_to_system_endpoint: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500 
     
-    
+
+# @app.route('/api/v1/messages/fine-tune', methods=['POST'])
+# @login_required
+# def fine_tune_messages_endpoint():
+#     """Fine tune messages"""
+#     try:
+#         # Get request data
+#         data = request.get_json()
+#         if not data:
+#             return jsonify({"error": "No data provided"}), 400

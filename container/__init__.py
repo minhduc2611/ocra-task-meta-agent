@@ -46,3 +46,5 @@ from controllers.user_controller import *
 from controllers.agent_settings_controller import *
 from controllers.message_controller import *
 from controllers.fine_tuning_model_controller import *
+from controllers.fine_tuning_controller import *
+

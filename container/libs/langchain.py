@@ -18,6 +18,8 @@ def check_model(model: str) -> AgentProvider:
     # include gemini
     elif model.find("gemini") != -1:
         return AgentProvider.GOOGLE_VERTEX
+    elif model.find("fine_tuned_model") != -1: # fine-tuned model
+        return AgentProvider.GOOGLE_VERTEX
     # include claude
     elif model.find("claude") != -1:
         return AgentProvider.ANTHROPIC
