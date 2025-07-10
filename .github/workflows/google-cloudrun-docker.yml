@@ -40,12 +40,15 @@ jobs:
       - name: 'Configure Docker for Artifact Registry'
         run: |
           echo '${{ steps.auth.outputs.auth_token }}' | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
-      - name: Debug Authentication
-        env:
-          GOOGLE_APPLICATION_CREDENTIALS: ${{ steps.auth.outputs.credentials_file_path }}
+      - name: Debug Token Identity
         run: |
+          # Check what identity the token represents
+          TOKEN="${{ steps.auth.outputs.auth_token }}"
+          curl -H "Authorization: Bearer $TOKEN" https://www.googleapis.com/oauth2/v1/tokeninfo
+          
+          # Also check with gcloud using the token
+          echo "$TOKEN" | gcloud auth activate-service-account --key-file=- || echo "Token activation failed"
           gcloud auth list
-          gcloud config get-value account
       - name: 'Build and Push Container'
         id: build
         run: |
