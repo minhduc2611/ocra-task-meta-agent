@@ -37,7 +37,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
-          token_format: 'id_token'
+          token_format: 'access_token'
       - name: 'Debug GitHub Context'
         run: |
           echo "Repository: ${{ github.repository }}"
@@ -57,7 +57,8 @@ jobs:
           # Check if token is valid
           if [ -n "${AUTH_TOKEN}" ] && [ "${AUTH_TOKEN}" != "" ]; then
             echo "Token exists, testing..."
-            curl -H "Authorization: Bearer ${AUTH_TOKEN}" https://www.googleapis.com/oauth2/v1/tokeninfo
+            curl -H "Authorization: Bearer ${AUTH_TOKEN}" https://www.googleapis.com/auth/cloud-platform
+
           else
             echo "No valid token generated!"
           fi
