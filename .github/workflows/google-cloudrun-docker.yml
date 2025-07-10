@@ -37,6 +37,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
+          token_format: 'access_token'
       - name: 'Debug GitHub Context'
         run: |
           echo "Repository: ${{ github.repository }}"
@@ -49,14 +50,19 @@ jobs:
           echo '${{ steps.auth.outputs.auth_token }}' | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
       - name: Debug Token Identity
         run: |
-          # Check what identity the token represents
-          TOKEN="${{ steps.auth.outputs.auth_token }}"
-          if [ -n "$TOKEN" ]; then
-            echo "Token exists and has length: ${#TOKEN}"
-            curl -H "Authorization: Bearer $TOKEN" https://www.googleapis.com/oauth2/v1/tokeninfo
+          # Check if auth outputs exist
+          echo "Auth token length: ${#AUTH_TOKEN}"
+          echo "Credentials file: ${{ steps.auth.outputs.credentials_file_path }}"
+          
+          # Check if token is valid
+          if [ -n "${AUTH_TOKEN}" ] && [ "${AUTH_TOKEN}" != "" ]; then
+            echo "Token exists, testing..."
+            curl -H "Authorization: Bearer ${AUTH_TOKEN}" https://www.googleapis.com/oauth2/v1/tokeninfo
           else
-            echo "No token generated!"
+            echo "No valid token generated!"
           fi
+        env:
+          AUTH_TOKEN: ${{ steps.auth.outputs.auth_token }}
       - name: 'Build and Push Container'
         id: build
         run: |
