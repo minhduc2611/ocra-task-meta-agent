@@ -37,6 +37,13 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
+      - name: 'Debug GitHub Context'
+        run: |
+          echo "Repository: ${{ github.repository }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "SHA: ${{ github.sha }}"
+          echo "Actor: ${{ github.actor }}"
+          echo "Event: ${{ github.event_name }}"
       - name: 'Configure Docker for Artifact Registry'
         run: |
           echo '${{ steps.auth.outputs.auth_token }}' | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
@@ -44,11 +51,12 @@ jobs:
         run: |
           # Check what identity the token represents
           TOKEN="${{ steps.auth.outputs.auth_token }}"
-          curl -H "Authorization: Bearer $TOKEN" https://www.googleapis.com/oauth2/v1/tokeninfo
-          
-          # Also check with gcloud using the token
-          echo "$TOKEN" | gcloud auth activate-service-account --key-file=- || echo "Token activation failed"
-          gcloud auth list
+          if [ -n "$TOKEN" ]; then
+            echo "Token exists and has length: ${#TOKEN}"
+            curl -H "Authorization: Bearer $TOKEN" https://www.googleapis.com/oauth2/v1/tokeninfo
+          else
+            echo "No token generated!"
+          fi
       - name: 'Build and Push Container'
         id: build
         run: |
