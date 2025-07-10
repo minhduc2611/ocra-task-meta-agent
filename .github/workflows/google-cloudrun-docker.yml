@@ -7,7 +7,7 @@ env:
   PROJECT_ID: 'buddha-rag-prod'
   REGION: 'asia-southeast1'
   SERVICE: 'buddha-rag-prod'
-  WORKLOAD_IDENTITY_PROVIDER: 'projects/538009146790/locations/global/workloadIdentityPools/githubpool/providers/githubaction'
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/538009146790/locations/global/workloadIdentityPools/githubpool/providers/github-action-build-backend'
   SERVICE_ACCOUNT: 'github-action@buddha-rag-prod.iam.gserviceaccount.com'
 jobs:
   checkout:
