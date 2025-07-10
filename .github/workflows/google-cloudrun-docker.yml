@@ -29,6 +29,9 @@ jobs:
       contents: read
       id-token: write
     steps:
+      - name: 'Debug GitHub Context'
+        run: |
+          cat '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
       - name: 'Checkout'
         uses: actions/checkout@v4
       - id: auth
