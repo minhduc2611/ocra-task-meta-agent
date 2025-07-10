@@ -13,7 +13,6 @@
 #    You can learn more about enabling APIs at
 #    https://support.google.com/googleapi/answer/6158841.
 #
-# 2. Create and configure a Workload Identity Provider for GitHub:
 #    https://github.com/google-github-actions/auth#preferred-direct-workload-identity-federation.
 #
 #    Depending on how you authenticate, you will need to grant an IAM principal
@@ -73,7 +72,7 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{SERVICE_ACCOUNT}}'
+          service_account: '${{env.SERVICE_ACCOUNT}}'
 
       - name: 'Docker Auth'
         uses: docker/login-action@v3
