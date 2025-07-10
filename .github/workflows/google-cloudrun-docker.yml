@@ -68,7 +68,11 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
-
+      - name: Debug Authentication
+        run: |
+          gcloud auth list
+          gcloud config get-value account
+          gcloud projects get-iam-policy ${{ vars.PROJECT_ID }} --flatten="bindings[].members" --format="table(bindings.role)" --filter="bindings.members:$(gcloud config get-value account)"
       - name: 'Docker Auth'
         uses: docker/login-action@v3
         with:
