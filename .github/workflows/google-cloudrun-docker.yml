@@ -37,7 +37,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
-          token_format: 'access_token'
+          credentials_json: '${{env.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
       - name: 'Debug GitHub Context'
         run: |
           echo "Repository: ${{ github.repository }}"
@@ -53,17 +53,6 @@ jobs:
           # Check if auth outputs exist
           echo "Auth token length: ${#AUTH_TOKEN}"
           echo "Credentials file: ${{ steps.auth.outputs.credentials_file_path }}"
-          
-          # Check if token is valid
-          if [ -n "${AUTH_TOKEN}" ] && [ "${AUTH_TOKEN}" != "" ]; then
-            echo "Token exists, testing..."
-            curl -H "Authorization: Bearer ${AUTH_TOKEN}" https://www.googleapis.com/auth/cloud-platform
-
-          else
-            echo "No valid token generated!"
-          fi
-          cat '${{ steps.auth.outputs.credentials_file_path }}'
-          gcloud auth activate-service-account github-action@buddha-rag-prod.iam.gserviceaccount.com --key-file='${{ steps.auth.outputs.credentials_file_path }}'
           gcloud auth list
         env:
           AUTH_TOKEN: ${{ steps.auth.outputs.auth_token }}
