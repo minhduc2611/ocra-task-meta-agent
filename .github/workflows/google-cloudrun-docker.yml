@@ -34,10 +34,10 @@ on:
     branches:
       - production
 env:
-  PROJECT_ID: 'my-project' # TODO: update to your Google Cloud project ID
-  REGION: 'us-central1' # TODO: update to your region
-  SERVICE: 'my-service' # TODO: update to your service name
-  WORKLOAD_IDENTITY_PROVIDER: 'projects/123456789/locations/global/workloadIdentityPools/my-pool/providers/my-provider' # TODO: update to your workload identity provider
+  PROJECT_ID: 'buddha-rag-prod' # TODO: update to your Google Cloud project ID
+  REGION: 'asia-southeast1' # TODO: update to your region
+  SERVICE: 'buddha-rag-prod' # TODO: update to your service name
+  WORKLOAD_IDENTITY_PROVIDER: 'projects/538009146790/locations/global/workloadIdentityPools/githubpool/providers/github-action-build-backend'
 
 jobs:
   deploy:
