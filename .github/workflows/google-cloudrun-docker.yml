@@ -37,7 +37,7 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
-          credentials_json: '${{env.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
+          credentials_json: '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
       - name: 'Debug GitHub Context'
         run: |
           echo "Repository: ${{ github.repository }}"
