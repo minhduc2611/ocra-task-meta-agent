@@ -62,6 +62,7 @@ jobs:
           else
             echo "No valid token generated!"
           fi
+          gcloud auth list
         env:
           AUTH_TOKEN: ${{ steps.auth.outputs.auth_token }}
       - name: 'Build and Push Container'
