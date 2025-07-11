@@ -48,14 +48,11 @@ jobs:
           registry: gcr.io
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
-      - name: Check user and paths
+      - name: Verify config location
         run: |
-          echo "Current user: $(whoami)"
-          echo "Home directory: $HOME"
-          echo "Tilde expansion: $(echo ~)"
-          echo "Are they the same?"
-          ls -la ~/.docker
-          sudo ls -la /root/.docker
+          echo "Docker config: $DOCKER_CONFIG"
+          ls -la $DOCKER_CONFIG
+          cat $DOCKER_CONFIG/config.json
       - name: Debug Docker auth
         run: |
             echo "=== Docker Info ==="
