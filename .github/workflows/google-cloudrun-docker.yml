@@ -51,7 +51,6 @@ jobs:
       - name: 'Build and Push Container'
         id: build
         run: |
-          gcloud auth configure-docker
           DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
           docker build --tag "$DOCKER_TAG" ./container
           docker push "$DOCKER_TAG"
