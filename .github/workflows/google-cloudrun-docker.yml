@@ -48,20 +48,27 @@ jobs:
           registry: gcr.io
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
+      - name: Check user and paths
+        run: |
+          echo "Current user: $(whoami)"
+          echo "Home directory: $HOME"
+          echo "Tilde expansion: $(echo ~)"
+          echo "Are they the same?"
+          ls -la ~/.docker
+          ls -la /root/.docker
       - name: Debug Docker auth
         run: |
-          echo "=== Docker Info ==="
-          docker info
-          echo "=== Config Location ==="
-          echo "DOCKER_CONFIG: ${DOCKER_CONFIG:-~/.docker}"
-          echo "=== Config Contents ==="
-          cat ~/.docker/config.json 2>/dev/null || echo "No config file"
-          echo "=== Test Auth ==="
-          docker pull hello-world || echo "Pull failed"
+            echo "=== Docker Info ==="
+            docker info
+            echo "=== Config Location ==="
+            echo "DOCKER_CONFIG: ${DOCKER_CONFIG:-~/.docker}"
+            echo "=== Config Contents ==="
+            cat ~/.docker/config.json 2>/dev/null || echo "No config file"
+            echo "=== Test Auth ==="
+            docker pull hello-world || echo "Pull failed"
       - name: 'Build and Push Container'
         id: build
         run: |
-          sudo gcloud auth configure-docker
           docker build --platform linux/amd64 -t 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest' ./container
           docker push 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
         # DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
