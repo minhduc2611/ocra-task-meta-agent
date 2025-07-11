@@ -93,7 +93,6 @@ jobs:
               OPENAI_API_KEY=OPENAI_API_KEY:latest 
               WEAVIATE_API_KEY=WEAVIATE_API_KEY:latest 
               JWT_SECRET=JWT_SECRET:latest 
-          env_vars: |
               WEAVIATE_URL=WEAVIATE_URL:latest 
       - name: 'Show output'
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
