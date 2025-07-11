@@ -51,7 +51,7 @@ jobs:
       - name: 'Build and Push Container'
         id: build
         run: |
-          gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin https://us-west3-docker.pkg.dev
+          sudo gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin 'https://${{ env.REGION }}-docker.pkg.dev'
           DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
           docker build --tag "$DOCKER_TAG" ./container
           docker push "$DOCKER_TAG"
