@@ -20,49 +20,44 @@ jobs:
       - name: 'Extract Commit SHA'
         id: extract_sha
         run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-  auth-and-build:
-    needs: checkout
-    runs-on: ubuntu-latest
-    outputs:
-      docker_image: ${{ steps.build.outputs.docker_image }}
-    permissions:
-      contents: read
-      id-token: write
-    steps:
-      - name: 'Debug GitHub Context'
-        run: |
-          echo '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
-      - name: 'Checkout'
-        uses: actions/checkout@v4
-      - id: auth
-        name: 'Authenticate to Google Cloud'
-        uses: google-github-actions/auth@v2
-        with:
-          workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
-          service_account: '${{env.SERVICE_ACCOUNT}}'
-          token_format: access_token
-          # credentials_json: '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
-      - name: Login to GCR
-        uses: docker/login-action@v3
-        with:
-          registry: gcr.io
-          username: oauth2accesstoken
-          password: ${{ steps.auth.outputs.access_token }}
-      - name: Verify config location
-        run: |
-          export DOCKER_CONFIG=/home/runner/.docker
-      - name: 'Build and Push Container'
-        id: build
-        run: |
-          DOCKER_IMAGE='gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
-          docker build --platform linux/amd64 -t $DOCKER_IMAGE ./container
-          docker push $DOCKER_IMAGE
-          echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
-        # DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
-        # docker build --tag "$DOCKER_TAG" ./container
-        # docker push "$DOCKER_TAG"
-        # echo "docker_tag=$DOCKER_TAG" >> "$GITHUB_OUTPUT"
-        # sudo gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin 'https://${{ env.REGION }}-docker.pkg.dev'
+  # auth-and-build:
+  #   needs: checkout
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     docker_image: ${{ steps.build.outputs.docker_image }}
+  #   permissions:
+  #     contents: read
+  #     id-token: write
+  #   steps:
+  #     - name: 'Debug GitHub Context'
+  #       run: |
+  #         echo '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
+  #     - name: 'Checkout'
+  #       uses: actions/checkout@v4
+  #     - id: auth
+  #       name: 'Authenticate to Google Cloud'
+  #       uses: google-github-actions/auth@v2
+  #       with:
+  #         workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
+  #         service_account: '${{env.SERVICE_ACCOUNT}}'
+  #         token_format: access_token
+  #         # credentials_json: '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
+  #     - name: Login to GCR
+  #       uses: docker/login-action@v3
+  #       with:
+  #         registry: gcr.io
+  #         username: oauth2accesstoken
+  #         password: ${{ steps.auth.outputs.access_token }}
+  #     - name: Verify config location
+  #       run: |
+  #         export DOCKER_CONFIG=/home/runner/.docker
+  #     - name: 'Build and Push Container'
+  #       id: build
+  #       run: |
+  #         DOCKER_IMAGE='gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
+  #         docker build --platform linux/amd64 -t $DOCKER_IMAGE ./container
+  #         docker push $DOCKER_IMAGE
+  #         echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
   deploy:
     needs: auth-and-build
     runs-on: ubuntu-latest
@@ -94,10 +89,11 @@ jobs:
           region: '${{ env.REGION }}'
           image: '${{ needs.auth-and-build.outputs.docker_image }}'
           env_vars_update_strategy: overwrite
-          secrets: |-
-            OPENAI_API_KEY=OPENAI_API_KEY:latest
-            WEAVIATE_URL=WEAVIATE_URL:latest
-            WEAVIATE_API_KEY=WEAVIATE_API_KEY:latest
-            JWT_SECRET=JWT_SECRET:latest
+          secrets: |
+              OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
+              WEAVIATE_API_KEY=${{ secrets.WEAVIATE_API_KEY }}
+              JWT_SECRET=${{ secrets.JWT_SECRET }}
+          env_vars: |
+              WEAVIATE_URL=${{ secrets.WEAVIATE_URL }}
       - name: 'Show output'
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
