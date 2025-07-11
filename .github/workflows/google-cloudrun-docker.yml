@@ -55,7 +55,7 @@ jobs:
           echo "Tilde expansion: $(echo ~)"
           echo "Are they the same?"
           ls -la ~/.docker
-          ls -la /root/.docker
+          sudo ls -la /root/.docker
       - name: Debug Docker auth
         run: |
             echo "=== Docker Info ==="
