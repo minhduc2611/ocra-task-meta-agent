@@ -68,8 +68,8 @@ jobs:
         id: build
         run: |
           DOCKER_IMAGE='gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
-          docker build --platform linux/amd64 -t 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest' ./container
-          docker push 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
+          docker build --platform linux/amd64 -t $DOCKER_IMAGE ./container
+          docker push $DOCKER_IMAGE
           echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
         # DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
         # docker build --tag "$DOCKER_TAG" ./container
