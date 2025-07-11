@@ -20,7 +20,7 @@ jobs:
       - name: 'Extract Commit SHA'
         id: extract_sha
         run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
-  # auth-and-build:
+  auth-and-build:
   #   needs: checkout
   #   runs-on: ubuntu-latest
   #   outputs:
@@ -51,15 +51,15 @@ jobs:
   #     - name: Verify config location
   #       run: |
   #         export DOCKER_CONFIG=/home/runner/.docker
-  #     - name: 'Build and Push Container'
-  #       id: build
-  #       run: |
-  #         DOCKER_IMAGE='gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
-  #         docker build --platform linux/amd64 -t $DOCKER_IMAGE ./container
-  #         docker push $DOCKER_IMAGE
-  #         echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
+      - name: 'Build and Push Container'
+        id: build
+        run: |
+          DOCKER_IMAGE='gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
+          echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
+        # docker build --platform linux/amd64 -t $DOCKER_IMAGE ./container
+        # docker push $DOCKER_IMAGE
   deploy:
-    # needs: auth-and-build
+    needs: auth-and-build
     runs-on: ubuntu-latest
     permissions:
       contents: read
