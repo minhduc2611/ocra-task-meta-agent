@@ -40,7 +40,14 @@ jobs:
         with:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
+          token_format: access_token
           # credentials_json: '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
+      - name: Login to GCR
+        uses: docker/login-action@v3
+        with:
+          registry: gcr.io
+          username: oauth2accesstoken
+          password: ${{ steps.auth.outputs.access_token }}
       - name: 'Build and Push Container'
         id: build
         run: |
