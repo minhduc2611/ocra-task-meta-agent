@@ -79,6 +79,7 @@ jobs:
       - name: 'Build and Push Container'
         run: |
           echo '${{ needs.auth-and-build.outputs.docker_image }}'
+          echo 'JWT_SECRET: ${{ secrets.JWT_SECRET }}'
       - name: 'Deploy to Cloud Run'
         uses: google-github-actions/deploy-cloudrun@v2
         with:
