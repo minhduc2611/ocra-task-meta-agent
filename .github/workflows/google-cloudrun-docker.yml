@@ -93,7 +93,7 @@ jobs:
           service: '${{ env.SERVICE }}'
           region: '${{ env.REGION }}'
           image: '${{ needs.auth-and-build.outputs.docker_image }}'
-          clear-env-vars: true
+          env_vars_update_strategy: overwrite
           secrets: |-
             OPENAI_API_KEY=OPENAI_API_KEY:latest
             WEAVIATE_URL=WEAVIATE_URL:latest
