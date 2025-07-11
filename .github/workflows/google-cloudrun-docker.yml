@@ -24,7 +24,7 @@ jobs:
     needs: checkout
     runs-on: ubuntu-latest
     outputs:
-      docker_tag: ${{ steps.build.outputs.docker_tag }}
+      docker_image: ${{ steps.build.outputs.docker_image }}
     permissions:
       contents: read
       id-token: write
