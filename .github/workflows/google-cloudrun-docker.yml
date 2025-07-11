@@ -50,10 +50,10 @@ jobs:
           password: ${{ steps.auth.outputs.access_token }}
       - name: Verify config location
         run: |
+          export DOCKER_CONFIG=/home/runner/.docker
           echo "Docker config: $DOCKER_CONFIG"
           ls -la $DOCKER_CONFIG
           cat $DOCKER_CONFIG/config.json
-          export DOCKER_CONFIG=/home/runner/.docker
       - name: Debug Docker auth
         run: |
             echo "=== Docker Info ==="
