@@ -48,6 +48,16 @@ jobs:
           registry: gcr.io
           username: oauth2accesstoken
           password: ${{ steps.auth.outputs.access_token }}
+      - name: Debug Docker auth
+        run: |
+          echo "=== Docker Info ==="
+          docker info
+          echo "=== Config Location ==="
+          echo "DOCKER_CONFIG: ${DOCKER_CONFIG:-~/.docker}"
+          echo "=== Config Contents ==="
+          cat ~/.docker/config.json 2>/dev/null || echo "No config file"
+          echo "=== Test Auth ==="
+          docker pull hello-world || echo "Pull failed"
       - name: 'Build and Push Container'
         id: build
         run: |
