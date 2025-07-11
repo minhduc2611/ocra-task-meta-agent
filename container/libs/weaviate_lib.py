@@ -26,7 +26,7 @@ if not OPENAI_API_KEY:
     error_message += "Missing required environment variables: OPENAI_API_KEY\n"
 
 if error_message:
-    print(error_message)
+    print('❌ Error initializing Weaviate client, missing required environment variables: ' + error_message)
     exit(1)
 
 client = weaviate.connect_to_weaviate_cloud(
