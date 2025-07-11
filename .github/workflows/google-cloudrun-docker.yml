@@ -21,14 +21,14 @@ jobs:
         id: extract_sha
         run: echo "sha=${GITHUB_SHA}" >> "$GITHUB_OUTPUT"
   auth-and-build:
-  #   needs: checkout
-  #   runs-on: ubuntu-latest
-  #   outputs:
-  #     docker_image: ${{ steps.build.outputs.docker_image }}
-  #   permissions:
-  #     contents: read
-  #     id-token: write
-  #   steps:
+    needs: checkout
+    runs-on: ubuntu-latest
+    outputs:
+      docker_image: ${{ steps.build.outputs.docker_image }}
+    permissions:
+      contents: read
+      id-token: write
+    steps:
   #     - name: 'Debug GitHub Context'
   #       run: |
   #         echo '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
