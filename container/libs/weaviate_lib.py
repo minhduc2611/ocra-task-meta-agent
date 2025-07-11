@@ -14,10 +14,26 @@ OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 headers = {
     "X-OpenAI-Api-Key": OPENAI_API_KEY,
 }
+
+error_message = ""
+if not WEAVIATE_URL:
+    error_message += "Missing required environment variables: WEAVIATE_URL\n"
+if not WEAVIATE_API_KEY:
+    error_message += "Missing required environment variables: WEAVIATE_API_KEY\n"
+if not EMBEDDING_MODEL:
+    error_message += "Missing required environment variables: EMBEDDING_MODEL\n"
+if not OPENAI_API_KEY:
+    error_message += "Missing required environment variables: OPENAI_API_KEY\n"
+
+if error_message:
+    print(error_message)
+    exit(1)
+
 client = weaviate.connect_to_weaviate_cloud(
     cluster_url=WEAVIATE_URL,                     # Weaviate URL: "REST Endpoint" in Weaviate Cloud console
     auth_credentials=Auth.api_key(WEAVIATE_API_KEY),  # Weaviate API key: "ADMIN" API key in Weaviate Cloud console
-    headers=headers
+    headers=headers,
+    skip_init_checks=True
 )
 def close_client():
     client.close()
