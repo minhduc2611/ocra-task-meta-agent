@@ -67,13 +67,13 @@ jobs:
       - name: 'Build and Push Container'
         id: build
         run: |
-          docker build --platform linux/amd64 -t 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest' ./container
-          docker push 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
-        # DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
-        # docker build --tag "$DOCKER_TAG" ./container
-        # docker push "$DOCKER_TAG"
-        # echo "docker_tag=$DOCKER_TAG" >> "$GITHUB_OUTPUT"
+          DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
+          docker build --tag "$DOCKER_TAG" ./container
+          docker push "$DOCKER_TAG"
+          echo "docker_tag=$DOCKER_TAG" >> "$GITHUB_OUTPUT"
         # sudo gcloud auth print-access-token | docker login -u oauth2accesstoken --password-stdin 'https://${{ env.REGION }}-docker.pkg.dev'
+        # docker build --platform linux/amd64 -t 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest' ./container
+        # docker push 'gcr.io/${{ env.PROJECT_ID }}/buddha-rag-agent:latest'
   # deploy:
   #   needs: auth-and-build
   #   runs-on: ubuntu-latest
