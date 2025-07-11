@@ -94,9 +94,9 @@ jobs:
           region: '${{ env.REGION }}'
           image: '${{ needs.auth-and-build.outputs.docker_image }}'
           secrets: |-
-            OPENAI_API_KEY=${{ secrets.OPENAI_API_KEY }}
-            WEAVIATE_URL=${{ secrets.WEAVIATE_URL }}
-            WEAVIATE_API_KEY=${{ secrets.WEAVIATE_API_KEY }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            OPENAI_API_KEY=OPENAI_API_KEY:latest
+            WEAVIATE_URL=WEAVIATE_URL:latest
+            WEAVIATE_API_KEY=WEAVIATE_API_KEY:latest
+            JWT_SECRET=JWT_SECRET:latest
       - name: 'Show output'
         run: echo "Deployed to ${{ steps.deploy.outputs.url }}"
