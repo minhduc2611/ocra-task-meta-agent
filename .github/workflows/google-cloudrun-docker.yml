@@ -41,31 +41,13 @@ jobs:
           workload_identity_provider: '${{ env.WORKLOAD_IDENTITY_PROVIDER }}'
           service_account: '${{env.SERVICE_ACCOUNT}}'
           # credentials_json: '${{secrets.SERVICE_ACCOUNT_JSON_CREDENTIALS}}'
-      - name: 'Debug GitHub Context'
+      - name: 'Build and Push Container'
+        id: build
         run: |
-          echo "Repository: ${{ github.repository }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "SHA: ${{ github.sha }}"
-          echo "Actor: ${{ github.actor }}"
-          echo "Event: ${{ github.event_name }}"
-      # - name: 'Configure Docker for Artifact Registry'
-      #   run: |
-      #     echo '${{ steps.auth.outputs.auth_token }}' | docker login -u oauth2accesstoken --password-stdin ${{ env.REGION }}-docker.pkg.dev
-      - name: Debug Token Identity
-        run: |
-          # Check if auth outputs exist
-          echo "Auth token length: ${#AUTH_TOKEN}"
-          echo "Credentials file: ${{ steps.auth.outputs.credentials_file_path }}"
-          gcloud auth list
-        env:
-          AUTH_TOKEN: ${{ steps.auth.outputs.auth_token }}
-  #     - name: 'Build and Push Container'
-  #       id: build
-  #       run: |
-  #         DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
-  #         docker build --tag "$DOCKER_TAG" ./container
-  #         docker push "$DOCKER_TAG"
-  #         echo "docker_tag=$DOCKER_TAG" >> "$GITHUB_OUTPUT"
+          DOCKER_TAG="${{ env.REGION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.SERVICE }}:${{ needs.checkout.outputs.sha }}"
+          docker build --tag "$DOCKER_TAG" ./container
+          docker push "$DOCKER_TAG"
+          echo "docker_tag=$DOCKER_TAG" >> "$GITHUB_OUTPUT"
   # deploy:
   #   needs: auth-and-build
   #   runs-on: ubuntu-latest
