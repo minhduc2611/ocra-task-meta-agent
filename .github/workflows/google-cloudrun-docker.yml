@@ -59,7 +59,7 @@ jobs:
   #         docker push $DOCKER_IMAGE
   #         echo "docker_image=$DOCKER_IMAGE" >> "$GITHUB_OUTPUT"
   deploy:
-    needs: auth-and-build
+    # needs: auth-and-build
     runs-on: ubuntu-latest
     permissions:
       contents: read
