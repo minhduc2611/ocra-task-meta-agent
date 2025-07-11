@@ -222,16 +222,19 @@ async def generate_buddha_agent_response(
                 tool_output = tool_data.get("output")
                 
                 # Convert ToolMessage to dict if needed
-                if hasattr(tool_output, 'to_dict'):
-                    tool_output = tool_output.to_dict()
-                elif hasattr(tool_output, '__dict__'):
-                    tool_output = tool_output.__dict__
-                elif not isinstance(tool_output, (dict, str, int, float, bool, type(None))):
-                    tool_output = str(tool_output)
-                
+                if tool_output:
+                    if hasattr(tool_output, 'to_dict'):
+                        tool_output = tool_output.to_dict()
+                    elif hasattr(tool_output, '__dict__'):
+                        tool_output = tool_output.__dict__
+                    elif not isinstance(tool_output, (dict, str, int, float, bool, type(None))):
+                        tool_output = str(tool_output)
+                    else:
+                        tool_output = str(tool_output)
+                print(f"tool_output: {tool_output}")
                 yield AppMessageResponse(
                     type=MessageType.TOOL_MESSAGE,
-                    content=tool_output,
+                    content=tool_output if tool_output else "",
                     role=AgentRole.TOOL,
                     tool_name=event.get("name"),
                     tool_call_id=tool_data.get("tool_call_id")
