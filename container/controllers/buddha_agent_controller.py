@@ -20,6 +20,9 @@ def meta_agent_chat_endpoint():
     try:
         body = request.json
         messages = [Message(**msg) for msg in body.get('messages', [])]
+        if not body:
+            raise ValueError("Request body is required")
+            
         language = body.get('language', Language.EN)
         options = body.get('options', {})
         approval_response = body.get('approval_response', None)

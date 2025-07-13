@@ -3,6 +3,8 @@ from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime
 from enum import Enum
 import json
+
+LINE_BREAK = "\n\n"
 @dataclass
 class StreamEvent:
     type: Literal["text", "end_of_stream"]
@@ -13,7 +15,7 @@ class StreamEvent:
             "type": self.type,
             "data": self.data,
             "metadata": self.metadata
-        })}\n"
+        })}{LINE_BREAK}"
 
 @dataclass
 class Assistant:
