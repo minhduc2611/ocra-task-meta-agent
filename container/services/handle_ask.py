@@ -140,9 +140,9 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                     if chunk.type == "text":
                         content = chunk.data
                         full_response += content
-                        yield chunk.to_dict_json()
+                        yield f"data: {chunk.to_dict_json()}"
                     elif chunk.type == "end_of_stream":
-                        yield chunk.to_dict_json()
+                        yield f"data: {chunk.to_dict_json()}"
                 
                 response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
                 

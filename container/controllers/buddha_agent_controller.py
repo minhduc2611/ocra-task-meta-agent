@@ -19,9 +19,9 @@ def meta_agent_chat_endpoint():
     """Chat with the buddha agent builder - streaming response"""
     try:
         body = request.json
-        messages = [Message(**msg) for msg in body.get('messages', [])]
         if not body:
             raise ValueError("Request body is required")
+        messages = [Message(**msg) for msg in body.get('messages', [])]
             
         language = body.get('language', Language.EN)
         options = body.get('options', {})
@@ -38,7 +38,9 @@ def meta_agent_chat_endpoint():
                         approval_response=approval_response
                     ):
                         try:
-                            yield message.to_dict_json()
+                            # Format as proper Server-Sent Events (SSE)
+                            json_data = message.to_dict_json()
+                            yield f"data: {json_data}"
                         except Exception as e:
                             # Fallback for any serialization issues
                             error_msg = {
@@ -47,9 +49,9 @@ def meta_agent_chat_endpoint():
                                 "original_message": str(message),
                                 "timestamp": datetime.now().isoformat()
                             }
-                            yield json.dumps(error_msg)
+                            yield f"data: {json.dumps(error_msg)}"
                     # Send end signal
-                    yield json.dumps({'type': 'end', 'timestamp': datetime.now().isoformat()})
+                    yield f"data: {json.dumps({'type': 'end', 'timestamp': datetime.now().isoformat()})}"
                 
                 # Run the async generator in the current event loop
                 loop = asyncio.new_event_loop()
@@ -94,6 +96,8 @@ def buddha_agent_builder_chat_sync_endpoint():
     """Chat with the buddha agent builder - synchronous response (backward compatibility)"""
     try:
         body = request.json
+        if not body:
+            raise ValueError("Request body is required")
         messages = [Message(**msg) for msg in body.get('messages', [])]
         language = body.get('language', Language.EN)
         options = body.get('options', {})

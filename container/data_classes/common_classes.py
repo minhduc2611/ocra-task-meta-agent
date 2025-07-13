@@ -11,11 +11,11 @@ class StreamEvent:
     data: str
     metadata: Optional[Dict[str, Any]] = None
     def to_dict_json(self):
-        return f"{json.dumps({
+        return json.dumps({
             "type": self.type,
             "data": self.data,
             "metadata": self.metadata
-        })}{LINE_BREAK}"
+        })
 
 @dataclass
 class Assistant:
@@ -231,7 +231,7 @@ class AppMessageResponse:
     metadata: Optional[Dict[str, Any]] = None
     
     def to_dict_json(self):
-        return f"{json.dumps({
+        return json.dumps({
             "type": self.type.value,
             "content": self.content,
             "role": self.role.value,
@@ -242,4 +242,4 @@ class AppMessageResponse:
             "reasoning": self.reasoning,
             "requires_user_action": self.requires_user_action,
             "metadata": self.metadata
-        })}{LINE_BREAK}"
+        })
