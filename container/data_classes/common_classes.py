@@ -230,8 +230,8 @@ class AppMessageResponse:
     requires_user_action: Optional[bool] = None
     metadata: Optional[Dict[str, Any]] = None
     
-    def to_dict(self):
-        return {
+    def to_dict_json(self):
+        return f"{json.dumps({
             "type": self.type.value,
             "content": self.content,
             "role": self.role.value,
@@ -242,4 +242,4 @@ class AppMessageResponse:
             "reasoning": self.reasoning,
             "requires_user_action": self.requires_user_action,
             "metadata": self.metadata
-        }
+        })}{LINE_BREAK}"

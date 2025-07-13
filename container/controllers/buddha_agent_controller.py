@@ -39,13 +39,9 @@ def meta_agent_chat_endpoint():
                     ):
                         try:
                             if isinstance(message, AppMessageResponse):
-                                dict_message = message.to_dict()
-                                # Send as Server-Sent Event
-                                yield json.dumps(dict_message)
+                                yield message.to_dict_json()
                             elif isinstance(message, dict):
                                 yield json.dumps(message)
-                            elif hasattr(message, 'to_dict'):
-                                yield json.dumps(message.to_dict())
                             elif hasattr(message, '__dict__'):
                                 yield json.dumps(message.__dict__)
                             else:
