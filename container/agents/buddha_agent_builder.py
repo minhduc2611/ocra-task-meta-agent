@@ -1,5 +1,5 @@
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncGenerator
 from langgraph.prebuilt import create_react_agent
 from data_classes.common_classes import Message, Language, AppMessageResponse
 from data_classes.common_classes import MessageType, AgentRole
@@ -144,7 +144,7 @@ async def generate_buddha_agent_response(
     options: Optional[Dict[str, Any]] = None, 
     language: Language = Language.EN,
     approval_response: Optional[Dict[str, Any]] = None
-):
+) -> AsyncGenerator[AppMessageResponse, None]:
     """
     Generate a response using the Buddha Agent Builder and yield messages to client.
     
@@ -271,9 +271,17 @@ async def generate_buddha_agent_response(
         
     except Exception as e:
         if language == Language.VI.value:
-            yield f"Lỗi tạo phản hồi: {str(e)}"
+            yield AppMessageResponse(
+                type=MessageType.ERROR,
+                content=f"Lỗi tạo phản hồi: {str(e)}",
+                role=AgentRole.SYSTEM
+            )
         else:
-            yield f"Error generating response: {str(e)}"
+            yield AppMessageResponse(
+                type=MessageType.ERROR,
+                content=f"Error generating response: {str(e)}",
+                role=AgentRole.SYSTEM
+            )
 
 def generate_buddha_agent_response_sync(messages: List[Message], contexts: List[Dict[str, str]] = None, options: Optional[Dict[str, Any]] = None, language: Language = Language.EN) -> str:
     """

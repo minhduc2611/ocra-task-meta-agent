@@ -38,14 +38,7 @@ def meta_agent_chat_endpoint():
                         approval_response=approval_response
                     ):
                         try:
-                            if isinstance(message, AppMessageResponse):
-                                yield message.to_dict_json()
-                            elif isinstance(message, dict):
-                                yield json.dumps(message)
-                            elif hasattr(message, '__dict__'):
-                                yield json.dumps(message.__dict__)
-                            else:
-                                yield json.dumps({"content": str(message), "type": "text"})
+                            yield message.to_dict_json()
                         except Exception as e:
                             # Fallback for any serialization issues
                             error_msg = {
