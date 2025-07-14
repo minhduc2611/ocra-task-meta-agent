@@ -24,9 +24,15 @@ from constants.separators import STARTING_SEPARATOR, ENDING_SEPARATOR
 logger = logging.getLogger(__name__)
 
 load_dotenv()
-PROJECT_ID = "llm-project-2d719"
-LOCATION = "global"  
-RAG_LOCATION = "us-central1"  
+
+PROJECT_ID = os.getenv("GOOGLE_PROJECT_ID")
+
+RAG_LOCATION = os.getenv("GOOGLE_RAG_LOCATION")
+if not PROJECT_ID:
+    raise ValueError("GOOGLE_PROJECT_ID is not set")
+if not RAG_LOCATION:
+    raise ValueError("GOOGLE_RAG_LOCATION is not set")
+
 RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/6917529027641081856"
 
 # Optional: Configure chunking for your RAG files

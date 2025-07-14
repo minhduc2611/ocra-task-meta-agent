@@ -3,17 +3,19 @@ from typing import List, Dict, Any, Optional, Literal
 from datetime import datetime
 from enum import Enum
 import json
+
+LINE_BREAK = "\n\n"
 @dataclass
 class StreamEvent:
     type: Literal["text", "end_of_stream"]
     data: str
     metadata: Optional[Dict[str, Any]] = None
     def to_dict_json(self):
-        return f"{json.dumps({
+        return json.dumps({
             "type": self.type,
             "data": self.data,
             "metadata": self.metadata
-        })}\n"
+        })
 
 @dataclass
 class Assistant:
@@ -228,8 +230,8 @@ class AppMessageResponse:
     requires_user_action: Optional[bool] = None
     metadata: Optional[Dict[str, Any]] = None
     
-    def to_dict(self):
-        return {
+    def to_dict_json(self):
+        return json.dumps({
             "type": self.type.value,
             "content": self.content,
             "role": self.role.value,
@@ -240,4 +242,4 @@ class AppMessageResponse:
             "reasoning": self.reasoning,
             "requires_user_action": self.requires_user_action,
             "metadata": self.metadata
-        }
+        })
