@@ -38,7 +38,7 @@ def start_fine_tuning():
             limit=1000,
             include_related=True,
             modes=modes,
-            approval_status=ApprovalStatus.APPROVED.value
+            approval_status=ApprovalStatus.APPROVED
         )
         if "error" in result:
             return jsonify({"error": f"Failed to get messages: {result['error']}"}), 400
@@ -117,7 +117,6 @@ def list_fine_tuning_jobs():
         
         # List jobs
         jobs = get_fine_tuning_job_list()
-        # {'name': 'projects/566310375218/locations/us-central1/tuningJobs/4139184176429531136', 'tunedModelDisplayName': 'fine_tuned_model_20250707_172139', 'baseModel': 'gemini-2.5-flash', 'supervisedTuningSpec': {'trainingDatasetUri': 'gs://buddha-ai-bucket/jsonl/fine_tune_data_09d8c97c.jsonl', 'hyperParameters': {}}, 'state': 'JOB_STATE_PENDING', 'createTime': '2025-07-07T14:21:40.943212Z', 'updateTime': '2025-07-07T14:21:40.943212Z'}
         job_list = []
         for job in jobs:
             job_list.append({
