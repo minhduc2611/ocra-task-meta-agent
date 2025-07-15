@@ -1,5 +1,5 @@
 from data_classes.common_classes import Message
-from typing import List
+from typing import List, Optional
 from libs.weaviate_lib import search_vector_collection, search_non_vector_collection, update_collection_object, delete_collection_object, get_object_by_id, COLLECTION_MESSAGES, insert_to_collection_in_batch, COLLECTION_DOCUMENTS
 from typing import Dict, Any
 from weaviate.collections.classes.filters import Filter
@@ -60,12 +60,12 @@ def get_messages(session_id: str, limit: int = 10) -> List[Message]:
 def get_messages_list(
     limit: int = 100, 
     offset: int = 0, 
-    session_id: str = None,
-    role: str = None,
-    modes: List[str] = None,
-    search: str = None,
+    session_id: Optional[str] = None,
+    role: Optional[str] = None,
+    agent_id: Optional[str] = None,
+    search: Optional[str] = None,
     include_related: bool = True,
-    approval_status: ApprovalStatus = None
+    approval_status: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Get a list of messages with pagination and filtering.
@@ -75,7 +75,7 @@ def get_messages_list(
         offset: Number of messages to skip (default: 0)
         session_id: Filter by session ID
         role: Filter by role (user, assistant, system)
-        modes: Filter by modes (fine-tune, chat)
+        agent_id: Filter by agent ID
         search: Search in message content
         include_related: Whether to include related messages (default: False for performance)
         approval_status: Filter by approval status (APPROVED, PENDING, REJECTED)
@@ -100,12 +100,12 @@ def get_messages_list(
             else:
                 filters = role_filter
         
-        if modes and len(modes) > 0:
-            mode_filter = (Filter.by_property("mode").contains_any(modes) & Filter.by_property("response_answer_id").is_none(False))
+        if agent_id:
+            agent_filter = Filter.by_property("agent_id").equal(agent_id)
             if filters:
-                filters = filters & mode_filter
+                filters = filters & agent_filter
             else:
-                filters = mode_filter
+                filters = agent_filter
                 
         if include_related:
             if filters:
@@ -129,7 +129,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
             )
         else:
             # Use non-vector search for regular queries
@@ -138,7 +138,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"],
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"],
                 sort=Sort.by_property("created_at", ascending=False)
             )
         
@@ -179,7 +179,7 @@ def attach_related_messages(messages):
                 collection_name=COLLECTION_MESSAGES,
                 filters=filters,
                 limit=len(response_ids),
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
             )
             for msg in related_results:
                 related_messages[msg["uuid"]] = msg
