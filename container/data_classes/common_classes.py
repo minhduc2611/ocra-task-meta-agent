@@ -7,7 +7,7 @@ import json
 LINE_BREAK = "\n\n"
 @dataclass
 class StreamEvent:
-    type: Literal["text", "end_of_stream"]
+    type: Literal["text", "end_of_stream", "thought"]
     data: str
     metadata: Optional[Dict[str, Any]] = None
     def to_dict_json(self):
@@ -243,3 +243,38 @@ class AppMessageResponse:
             "requires_user_action": self.requires_user_action,
             "metadata": self.metadata
         })
+
+class ApiKeyStatus(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    EXPIRED = "expired"
+    REVOKED = "revoked"
+
+@dataclass
+class ApiKey:
+    uuid: Optional[str] = None
+    name: Optional[str] = None
+    key_hash: Optional[str] = None
+    user_id: Optional[str] = None
+    status: Optional[ApiKeyStatus] = None
+    permissions: Optional[List[str]] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    expires_at: Optional[datetime] = None
+    last_used_at: Optional[datetime] = None
+    description: Optional[str] = None
+
+@dataclass
+class CreateApiKeyRequest:
+    name: str
+    description: Optional[str] = None
+    permissions: Optional[List[str]] = None
+    expires_at: Optional[datetime] = None
+
+@dataclass
+class UpdateApiKeyRequest:
+    name: Optional[str] = None
+    description: Optional[str] = None
+    permissions: Optional[List[str]] = None
+    status: Optional[ApiKeyStatus | str] = None
+    expires_at: Optional[datetime] = None

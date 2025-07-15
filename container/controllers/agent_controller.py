@@ -134,8 +134,9 @@ def test_agent_endpoint(agent_id):
 def chat_with_agent_endpoint(agent_id):
     """Chat with an agent, optionally with streaming"""
     try:
-        
         body = request.json
+        if not body:
+            return jsonify({"error": "Request body is required"}), 400
         session_id = str(uuid.uuid4())
         messages = [Message(**msg) for msg in body.get('messages', [])]
         ask_request = AskRequest(
@@ -149,6 +150,44 @@ def chat_with_agent_endpoint(agent_id):
         
         if not agent_id:
             return {"error": "Agent ID is required"}
+        
+        is_streaming = ask_request.options and ask_request.options.get("stream", False)
+        
+        try:
+            if is_streaming:
+                return handle_ask_streaming(ask_request, False)
+            else:
+                results = handle_ask_non_streaming(ask_request)
+                return jsonify(results), 200
+        except AskError as e:
+            return Response(
+                response=json.dumps({"error": e.message}),
+                status=e.status_code,
+                mimetype="application/json"
+            )
+    except Exception as e:
+        logger.error(f"Error chatting with agent: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/v1/chat', methods=['POST'])
+@login_required
+def chat_with_agent_endpoint_with_api_key():
+    """Chat with an agent, optionally with streaming"""
+    try:
+        body = request.json
+        if not body:
+            return jsonify({"error": "Request body is required"}), 400
+        session_id = str(uuid.uuid4())
+        messages = [Message(**msg) for msg in body.get('messages', [])]
+        ask_request = AskRequest(
+            messages=messages,
+            session_id=session_id,
+            language=body.get('language', Language.VI),
+            options=body.get('options'),
+            model=body.get('model', 'gpt-4o'),
+            agent_id=body.get('agent_id'),
+        )
         
         is_streaming = ask_request.options and ask_request.options.get("stream", False)
         

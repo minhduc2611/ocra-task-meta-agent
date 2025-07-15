@@ -49,7 +49,7 @@ def get_messages(session_id: str, limit: int = 10) -> List[Message]:
         collection_name="Messages",
         filters=filters,
         limit=limit,
-        properties=["content", "role", "created_at"],
+        properties=["content", "role", "created_at", "thought"],
         sort=Sort.by_property("created_at", ascending=True).by_property("role", ascending=False)
     )
     # Get relevant messages from the database
@@ -129,7 +129,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content"]
+                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
             )
         else:
             # Use non-vector search for regular queries
@@ -138,7 +138,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content"],
+                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"],
                 sort=Sort.by_property("created_at", ascending=False)
             )
         
@@ -179,7 +179,7 @@ def attach_related_messages(messages):
                 collection_name=COLLECTION_MESSAGES,
                 filters=filters,
                 limit=len(response_ids),
-                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content"]
+                properties=["content", "role", "created_at", "session_id", "mode", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
             )
             for msg in related_results:
                 related_messages[msg["uuid"]] = msg
@@ -237,7 +237,7 @@ def update_message(message_id: str, **kwargs) -> Dict[str, Any]:
         
         # Update fields
         update_data = {}
-        allowed_fields = ["content", "role", "mode", "feedback", "approval_status", "edited_content"]
+        allowed_fields = ["content", "role", "mode", "feedback", "approval_status", "edited_content", "thought", "response_answer_id"]
         
         for key, value in kwargs.items():
             if key in allowed_fields:

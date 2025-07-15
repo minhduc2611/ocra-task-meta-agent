@@ -1,5 +1,5 @@
 import vertexai
-from vertexai.generative_models import GenerativeModel, GenerationConfig
+from vertexai.generative_models import GenerativeModel, GenerationConfig, grounding
 from vertexai.generative_models import Tool
 from vertexai import rag
 from vertexai.rag.utils.resources import TransformationConfig, ChunkingConfig
@@ -22,6 +22,8 @@ from datetime import datetime
 from typing import Dict, Any
 from constants.separators import STARTING_SEPARATOR, ENDING_SEPARATOR
 logger = logging.getLogger(__name__)
+from google.genai import Client
+from google.genai import types
 
 load_dotenv()
 
@@ -47,35 +49,35 @@ TRANSFORMATION_CONFIG: TransformationConfig = TransformationConfig(
 # 
 vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
 
+# You are an advanced AI assistant named: {{agent_name}}. Your goal is to provide responses. A key part of your process is transparency in your thinking.
+
+# # Core Instruction: 
+# For every user query, you must first engage in a "Chain of Thought" sequence before delivering the final answer. This internal monologue or reasoning process should be explicitly written out.
+# Example Delimiter: Use a clear visual separator, use {{STARTING_SEPARATOR}} to open your Chain of Thought process, use {{ENDING_SEPARATOR}} to close your Chain of Thought process before presenting the final response.
+
+# # ALWAYS Follow this Chain of Thought Structure:
+
+# {{STARTING_SEPARATOR}}
+# ## Defining the Persona 
+# ## Refining the Approach
+# ## Embodying the Style
+# ## Analyzing the Scene 
+# ## Structuring the Re-enactment
+# ## Structuring the Response
+# ## Structuring the Re-enactment
+
+# {{ENDING_SEPARATOR}}
+
+# After the complete "Chain of Thought" block, present the final, polished answer to the user.
+# Clearly show what you have thought in an organized way.
+# <example>
+# {{agent_name}} có biết một bài kệ từ Sư Tam Vô:
+# {{agent_name}} xin được chia sẻ một bài kệ từ Sư Tam Vô:
+# </example>
+
+# Here is you:
+    
 system_prompt_vi = """
-You are an advanced AI assistant named: {{agent_name}}. Your goal is to provide responses. A key part of your process is transparency in your thinking.
-
-# Core Instruction: 
-For every user query, you must first engage in a "Chain of Thought" sequence before delivering the final answer. This internal monologue or reasoning process should be explicitly written out.
-Example Delimiter: Use a clear visual separator, use {{STARTING_SEPARATOR}} to open your Chain of Thought process, use {{ENDING_SEPARATOR}} to close your Chain of Thought process before presenting the final response.
-
-# ALWAYS Follow this Chain of Thought Structure:
-
-{{STARTING_SEPARATOR}}
-## Defining the Persona 
-## Refining the Approach
-## Embodying the Style
-## Analyzing the Scene 
-## Structuring the Re-enactment
-## Structuring the Response
-## Structuring the Re-enactment
-
-{{ENDING_SEPARATOR}}
-
-After the complete "Chain of Thought" block, present the final, polished answer to the user.
-Clearly show what you have thought in an organized way.
-Show at least 1000 words of answer, add verses and lesson references and explain them with tone.
-<example>
-{{agent_name}} có biết một bài kệ từ Sư Tam Vô:
-{{agent_name}} xin được chia sẻ một bài kệ từ Sư Tam Vô:
-</example>
-
-Here is you:
 You are:{{agent_name}}
 Here is the your persona:
 {{agent_persona}}
@@ -126,9 +128,11 @@ def generate_gemini_response(
     Returns:
         The text response from the Gemini model, potentially with citations.
     """
+    if not agent:
+        raise Exception("Agent is required")
     base_language = agent["language"] if agent else Language.VI.value
     base_model = agent["model"] if agent else "gemini-2.0-flash-001"
-    base_temperature = agent["temperature"] if agent else 0.3
+    base_temperature = agent["temperature"] if agent else 1
     agent_name = agent["name"] if agent else "Sư Tam Vô AI"
     base_system_prompt = (system_prompt_vi if base_language == Language.VI.value else system_prompt_en)
     base_system_prompt = base_system_prompt.replace("{{agent_name}}", agent_name)
@@ -136,87 +140,120 @@ def generate_gemini_response(
     base_system_prompt = base_system_prompt.replace("{{ENDING_SEPARATOR}}", ENDING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{agent_persona}}", agent["system_prompt"] if agent else "")
     user_query = messages[-1].content
-
-    rag_retrieval_tool = Tool.from_retrieval(
-        retrieval=rag.Retrieval(
-            source=rag.VertexRagStore(
+    rag_retrieval_tool_2 = types.Tool(
+        retrieval=types.Retrieval(
+        vertex_rag_store=types.VertexRagStore(
                 rag_resources=[
-                    rag.RagResource(
+                    types.VertexRagStoreRagResource(
                         rag_corpus=RAG_CORPUS_NAME,
                     )
                 ],
-                rag_retrieval_config=rag.RagRetrievalConfig(
+                rag_retrieval_config=types.RagRetrievalConfig(
                     top_k=20,
-                    filter=rag.utils.resources.Filter(vector_distance_threshold=0.7),
+                    filter=types.RagRetrievalConfigFilter(
+                        vector_distance_threshold=0.7,
+                    ),
                 ),
             ),
-        )
     )
-    # tuned_model_name = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/models/{base_model}" 
-
-    model = GenerativeModel(
-        model_name=base_model,
-        tools=[rag_retrieval_tool],
-        system_instruction=base_system_prompt
+    )
+    client = Client(
+        vertexai=True,
+        project=PROJECT_ID,
+        location=RAG_LOCATION
     )
     history = []
-    if messages[:-1]:
-        history = [Content(role=x.role, parts=[Part.from_text(x.content)]) for x in messages[:-1]]
-    chat = model.start_chat(
-        history=[
-            Content(role="model", parts=[Part.from_text(base_system_prompt)]),
-            *history
-        ]
-    )
+    if messages:
+        history = [types.Content(role=x.role, parts=[types.Part(text=x.content)]) for x in messages]
+    
+    thinking_config = None
+    if base_model.startswith("gemini-2.5"):
+        thinking_config = types.ThinkingConfig(
+            thinking_budget=-1,
+            include_thoughts=True,
+        )
     try:
         if stream:
-            generator = chat.send_message(
-                generation_config=GenerationConfig(
-                    temperature=base_temperature,
-                    top_p=0.9,
-                    top_k=40,
-                    max_output_tokens=8192,
+            generator = client.models.generate_content_stream(
+                model=base_model,
+                # model='projects/566310375218/locations/us-central1/models/7653184769995309056',
+                # model='projects/566310375218/locations/us-central1/endpoints/3767644817853513728',
+                contents=history,
+                config=types.GenerateContentConfig(
+                    system_instruction=base_system_prompt,
+                    tools=[rag_retrieval_tool_2],
                     response_mime_type="text/plain",
-                    candidate_count=1,
-                ),
-                content=user_query, 
-                stream=True
+                    response_modalities=["TEXT"],
+                    max_output_tokens=8192,
+                    temperature=base_temperature,
+                    top_p = 1,
+                    top_k=40,
+                    thinking_config=thinking_config,
                 )
+            )
+    #          for (const part of response.candidates[0].content.parts) {
+    # if (!part.text) {
+    #   continue;
+    # }
+    # else if (part.thought) {
+    #   console.log("Thoughts summary:");
+    #   console.log(part.text);
+    # }
+    # else {
+    #   console.log("Answer:");
+    #   console.log(part.text);
+    # }
             def generate():
                 full_response = ""
                 for chunk in generator:
-                    print(chunk)
-                    if chunk.text:
-                        full_response += chunk.text
-                        yield StreamEvent(type="text", data=chunk.text)
+                    if chunk:
+                        full_response += chunk.text or ""
+                        if chunk.candidates and chunk.candidates[0] and chunk.candidates[0].content:
+                            for part in chunk.candidates[0].content.parts or []:
+                                if part and part.text:
+                                    if part.thought:
+                                        yield StreamEvent(type="thought", data=part.text or "")
+                                    else:
+                                        yield StreamEvent(type="text", data=part.text or "")
+                        # yield StreamEvent(type="text", data=full_response or "")
                 
                 # Debug: Print response length
-                print(f"DEBUG: Total response length: {len(full_response)} characters, approximately {len(full_response.split())} words")
+                # print(f"DEBUG: Total response length: {len(full_response)} characters, approximately {len(full_response.split())} words")
                 
                 yield StreamEvent(type="end_of_stream", data="", metadata=None)
             return generate()
         else:
-            response = chat.send_message(
-                generation_config=GenerationConfig(
-                    temperature=base_temperature,
-                    top_p=0.9,
-                    top_k=40,
-                    max_output_tokens=8192,
+            response = client.models.generate_content(
+                model=base_model,
+                # model='projects/566310375218/locations/us-central1/endpoints/3767644817853513728',
+                contents=[
+                    types.Content(
+                        role="user",
+                        parts=[types.Part(text=user_query)]
+                    )
+                ],
+                config=types.GenerateContentConfig(
+                    system_instruction=base_system_prompt,
+                    tools=[rag_retrieval_tool_2],
                     response_mime_type="text/plain",
-                    candidate_count=1,
-                ),
-                content=user_query, 
+                    response_modalities=["TEXT"],
+                    max_output_tokens=8192,
+                    temperature=base_temperature,
+                    top_p = 1,
+                    top_k=40,
+                    thinking_config=thinking_config,
                 )
-            print(response)
+            )
+            # print(response)
             
             # Debug: Print response length
-            print(f"DEBUG: Response length: {len(response.text)} characters, approximately {len(response.text.split())} words")
+            # print(f"DEBUG: Response length: {len(response.text)} characters, approximately {len(response.text.split())} words")
             
-            text_with_citations = add_citations(response)
+            # text_with_citations = add_citations(response)
             # print("*"*100)
             # print(text_with_citations)
             # print("*"*100)
-            return text_with_citations
+            return response.text or ""
     except Exception as e:
         print(f"Error sending grounded message to Gemini: {e}")
         return "Sorry, I couldn't process your request with the knowledge base."

@@ -10,7 +10,7 @@ from agents.buddha_agent import get_default_buddha_agent
 from libs.open_ai import generate_openai_answer
 from libs.google_vertex import generate_gemini_response
 from libs.langchain import check_model
-from constants.separators import ENDING_SEPARATOR
+from constants.separators import ENDING_SEPARATOR, STARTING_SEPARATOR
 from utils.string_utils import get_text_after_separator
 
 class AskError(Exception):
@@ -110,6 +110,15 @@ def get_contexts(last_user_message: Message) -> List[Dict[str, str]]:
     ]
     return contexts
 
+def format_response(chunk: StreamEvent, text_only: bool) -> str:
+    if text_only:
+        if ENDING_SEPARATOR in chunk.data:
+            return chunk.data.split(ENDING_SEPARATOR)[1]
+        else:
+            return chunk.data
+    else:
+        return f"data: {chunk.to_dict_json()}"
+
 def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
     try:
         # 1. prepare
@@ -117,7 +126,16 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
         # 2. generate answer
         def generate():
             try:
+                if not body.agent_id:
+                    raise AskError("Agent ID is required", 400)
+                if not body.options:
+                    raise AskError("Options are required", 400)
+                text_only = body.options.get('text_only', False)
+                if not text_only:
+                    text_only = False
                 agent = get_agent(body.agent_id, body.language)
+                if not agent:
+                    raise AskError("Agent not found", 404)
                 provider = check_model(agent["model"])
                 match provider.value:
                     case AgentProvider.OPENAI.value:
@@ -136,15 +154,19 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                             stream = True
                         )
                 full_response = ""
+                thought_response = ""
                 for chunk in stream: 
                     if chunk.type == "text":
                         content = chunk.data
                         full_response += content
-                        yield f"data: {chunk.to_dict_json()}"
+                        yield format_response(chunk, text_only)
+                    elif chunk.type == "thought":
+                        thought_response += chunk.data
+                        yield format_response(chunk, text_only)
                     elif chunk.type == "end_of_stream":
-                        yield f"data: {chunk.to_dict_json()}"
+                        yield format_response(chunk, text_only)
                 
-                response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
+                # response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
                 
                 # After streaming is complete, save the messages
                 user_time = datetime.now()
@@ -159,6 +181,7 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                                 "role": last_user_message.role,
                                 "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 "mode": body.mode,
+                                "agent_id": body.agent_id,
                             }
                         )
                         
@@ -172,7 +195,8 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                                     "mode": body.mode,
                                     "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                     "approval_status": ApprovalStatus.PENDING.value,
-                                    "response_answer_id": str(response_answer_id)
+                                    "response_answer_id": str(response_answer_id),
+                                    "agent_id": body.agent_id,
                                 }
                             )
                             
@@ -181,11 +205,12 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                             collection_name=COLLECTION_MESSAGES,
                             properties={
                                 "session_id": body.session_id,
-                                "content": response_content,
-                                "thought": response_thought,
+                                "content": full_response,
+                                "thought": thought_response,
                                 "role": "assistant",
                                 "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "mode": body.mode
+                                "mode": body.mode,
+                                "agent_id": body.agent_id,
                             }
                         )
                         insert_to_collection(
@@ -197,7 +222,8 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                                 "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
                                 "mode": body.mode,
                                 "response_answer_id": str(response_answer_id),
-                                "approval_status": ApprovalStatus.PENDING.value
+                                "approval_status": ApprovalStatus.PENDING.value,
+                                "agent_id": body.agent_id,
                             }
                         )
                     

@@ -9,6 +9,7 @@ from flask import Flask, request, jsonify, g
 from flask_cors import CORS
 from functools import wraps
 from services.handle_auth import verify_jwt_token, AuthError
+from services.handle_api_keys import validate_api_key
 
 app = Flask(__name__)
 CORS(app, expose_headers=["X-Total-Count", "X-Page-Size", "X-Page-Number", "X-Total-Pages"])
@@ -21,15 +22,28 @@ def login_required(f):
             return jsonify({"error": "No authorization header"}), 401
 
         try:
-            # Extract token from "Bearer <token>"
-            token = auth_header.split(" ")[1]
-            payload = verify_jwt_token(token)
-            g.user_id = payload['user_id']
+            # Check if it's an API key (starts with 'pk_')
+            if auth_header.startswith('pk_'):
+                # API key authentication
+                validation_result = validate_api_key(auth_header)
+                if not validation_result:
+                    return jsonify({"error": "Invalid API key"}), 401
+                g.user_id = validation_result['user_id']
+                g.api_key_id = validation_result['api_key_id']
+                g.permissions = validation_result['permissions']
+            else:
+                # JWT token authentication
+                token = auth_header.split(" ")[1]
+                payload = verify_jwt_token(token)
+                g.user_id = payload['user_id']
+                g.api_key_id = None
+                g.permissions = []
+            
             return f(*args, **kwargs)
         except AuthError as e:
             return jsonify({"error": e.message}), e.status_code
         except Exception as e:
-            return jsonify({"error": "Invalid token"}), 401
+            return jsonify({"error": "Invalid authorization"}), 401
 
     return decorated_function
 
@@ -47,4 +61,5 @@ from controllers.agent_settings_controller import *
 from controllers.message_controller import *
 from controllers.fine_tuning_model_controller import *
 from controllers.fine_tuning_controller import *
+from controllers.api_key_controller import *
 

@@ -15,7 +15,7 @@ def get_messages_endpoint():
         offset = request.args.get('offset', 0, type=int)
         session_id = request.args.get('session_id', type=str)
         role = request.args.get('role', type=str)
-        mode = request.args.get('mode', type=str)
+        # mode = request.args.get('mode', type=str)
         search = request.args.get('search', type=str)
         include_related = request.args.get('include_related', 'false').lower() == 'true'
         approval_status = request.args.get('approval_status', type=str)
@@ -25,7 +25,7 @@ def get_messages_endpoint():
             offset=offset,
             session_id=session_id,
             role=role,
-            modes=[mode],
+            # modes=[mode],
             search=search,
             include_related=include_related,
             approval_status=approval_status

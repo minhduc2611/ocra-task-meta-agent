@@ -46,6 +46,7 @@ COLLECTION_TOKEN_BLACKLIST = "TokenBlacklist"
 COLLECTION_AGENTS = "Agents"
 COLLECTION_AGENT_SETTINGS = "AgentSettings"
 COLLECTION_FINE_TUNING_MODELS = "FineTuningModels"
+COLLECTION_API_KEYS = "ApiKeys"
 
 def initialize_schema() -> None:
     """Initialize the Weaviate schema if it doesn't exist."""
@@ -94,10 +95,21 @@ def initialize_schema() -> None:
                 wvc.config.Property(name="feedback", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="edited_content", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="approval_status", data_type=wvc.config.DataType.TEXT),
-                
             ]
         )
         print("🙌🏼 Collection Messages created successfully")
+    # add thought property to Messages collection
+    try:
+        messages_collection = client.collections.get(COLLECTION_MESSAGES)
+        messages_collection.config.add_property(
+            wvc.config.Property(name="agent_id", data_type=wvc.config.DataType.UUID)
+        )
+        messages_collection.config.add_property(
+                wvc.config.Property(name="thought", data_type=wvc.config.DataType.TEXT),
+        )
+    except Exception as e:
+        print(f"Error adding thought property to Messages collection: {e}")
+    
     exists = client.collections.exists(COLLECTION_FINE_TUNING_MODELS)
     if not exists:
         client.collections.create(
@@ -120,6 +132,24 @@ def initialize_schema() -> None:
             ]
         )
         print("🙌🏼 Collection FineTuningModels created successfully")
+    exists = client.collections.exists(COLLECTION_API_KEYS)
+    if not exists:
+        client.collections.create(
+            name=COLLECTION_API_KEYS,
+            properties=[
+                wvc.config.Property(name="name", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="description", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="key_hash", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="user_id", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="status", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="permissions", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="updated_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="expires_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="last_used_at", data_type=wvc.config.DataType.DATE),
+            ]
+        )
+        print("🙌🏼 Collection ApiKeys created successfully")
     exists = client.collections.exists(COLLECTION_SECTIONS)
     if not exists:
         client.collections.create(
