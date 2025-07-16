@@ -6,7 +6,7 @@ from services.handle_api_keys import (
 from data_classes.common_classes import CreateApiKeyRequest, UpdateApiKeyRequest
 import logging
 from __init__ import app, login_required
-
+import json
 logger = logging.getLogger(__name__)
 
 @app.route('/api/v1/api-keys', methods=['POST'])
@@ -42,7 +42,20 @@ def list_api_keys_endpoint():
         offset = request.args.get('offset', 0, type=int)
         
         api_keys = get_api_keys_by_user(g.user_id, limit=limit, offset=offset)
-        return jsonify({"api_keys": api_keys}), 200
+        results = []
+        for api_key in api_keys:
+            results.append({
+                "uuid": api_key.get("uuid"),
+                "name": api_key.get("name"),
+                "description": api_key.get("description"),
+                "status": api_key.get("status"),
+                "permissions": json.loads(api_key.get("permissions") or "[]"),
+                "created_at": api_key.get("created_at"),
+                "updated_at": api_key.get("updated_at"),
+                "expires_at": api_key.get("expires_at"),
+                "last_used_at": api_key.get("last_used_at"),
+            })
+        return jsonify({"api_keys": results}), 200
     except ApiKeyError as e:
         return jsonify({"error": e.message}), e.status_code
     except Exception as e:

@@ -35,7 +35,7 @@ if not PROJECT_ID:
 if not RAG_LOCATION:
     raise ValueError("GOOGLE_RAG_LOCATION is not set")
 
-RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/6917529027641081856"
+# RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/6917529027641081856"
 
 # Optional: Configure chunking for your RAG files
 # You can adjust these values based on your needs
@@ -139,24 +139,28 @@ def generate_gemini_response(
     base_system_prompt = base_system_prompt.replace("{{STARTING_SEPARATOR}}", STARTING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{ENDING_SEPARATOR}}", ENDING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{agent_persona}}", agent["system_prompt"] if agent else "")
-    user_query = messages[-1].content
-    rag_retrieval_tool_2 = types.Tool(
-        retrieval=types.Retrieval(
-        vertex_rag_store=types.VertexRagStore(
-                rag_resources=[
-                    types.VertexRagStoreRagResource(
-                        rag_corpus=RAG_CORPUS_NAME,
-                    )
-                ],
-                rag_retrieval_config=types.RagRetrievalConfig(
-                    top_k=20,
-                    filter=types.RagRetrievalConfigFilter(
-                        vector_distance_threshold=0.7,
+    corpus_id = agent["corpus_id"]
+    rag_retrieval_tool_2 = None
+    if corpus_id:
+        RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+        rag_retrieval_tool_2 = types.Tool(
+            retrieval=types.Retrieval(
+            vertex_rag_store=types.VertexRagStore(
+                    rag_resources=[
+                        types.VertexRagStoreRagResource(
+                            rag_corpus=RAG_CORPUS_NAME,
+                        )
+                    ],
+                    rag_retrieval_config=types.RagRetrievalConfig(
+                        top_k=20,
+                        filter=types.RagRetrievalConfigFilter(
+                            vector_distance_threshold=0.7,
+                        ),
                     ),
                 ),
-            ),
-    )
-    )
+            )
+        )
+    user_query = messages[-1].content
     client = Client(
         vertexai=True,
         project=PROJECT_ID,
@@ -172,6 +176,10 @@ def generate_gemini_response(
             thinking_budget=-1,
             include_thoughts=True,
         )
+    tools = []
+    if rag_retrieval_tool_2:
+        tools.append(rag_retrieval_tool_2)
+    print(f"tools: {len(tools)}")
     try:
         if stream:
             generator = client.models.generate_content_stream(
@@ -181,7 +189,7 @@ def generate_gemini_response(
                 contents=history,
                 config=types.GenerateContentConfig(
                     system_instruction=base_system_prompt,
-                    tools=[rag_retrieval_tool_2],
+                    tools=tools,
                     response_mime_type="text/plain",
                     response_modalities=["TEXT"],
                     max_output_tokens=8192,
@@ -191,18 +199,6 @@ def generate_gemini_response(
                     thinking_config=thinking_config,
                 )
             )
-    #          for (const part of response.candidates[0].content.parts) {
-    # if (!part.text) {
-    #   continue;
-    # }
-    # else if (part.thought) {
-    #   console.log("Thoughts summary:");
-    #   console.log(part.text);
-    # }
-    # else {
-    #   console.log("Answer:");
-    #   console.log(part.text);
-    # }
             def generate():
                 full_response = ""
                 for chunk in generator:
@@ -234,7 +230,7 @@ def generate_gemini_response(
                 ],
                 config=types.GenerateContentConfig(
                     system_instruction=base_system_prompt,
-                    tools=[rag_retrieval_tool_2],
+                    tools=tools,
                     response_mime_type="text/plain",
                     response_modalities=["TEXT"],
                     max_output_tokens=8192,
