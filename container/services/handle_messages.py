@@ -133,7 +133,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought", "like_user_ids", "dislike_user_ids"]
             )
         else:
             # Use non-vector search for regular queries
@@ -142,7 +142,7 @@ def get_messages_list(
                 limit=limit,
                 filters=filters,
                 offset=offset,
-                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"],
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought", "like_user_ids", "dislike_user_ids"],
                 sort=Sort.by_property("created_at", ascending=False)
             )
         
@@ -154,10 +154,10 @@ def get_messages_list(
 
         # turn joined likes into array dict
         for message in messages_with_related:
-            if message.get("like_user_ids"):
-                message["like_user_ids"] = message["like_user_ids"].split(",")
-            if message.get("dislike_user_ids"):
-                message["dislike_user_ids"] = message["dislike_user_ids"].split(",")
+            if message['related_message'] and message['related_message'].get("like_user_ids"):
+                message["related_message"]["like_user_ids"] = message["related_message"]["like_user_ids"].split(",")
+            if message['related_message'] and message['related_message'].get("dislike_user_ids"):
+                message["related_message"]["dislike_user_ids"] = message["related_message"]["dislike_user_ids"].split(",")
         
         return {
             "messages": messages_with_related,
@@ -189,15 +189,14 @@ def attach_related_messages(messages):
             related_results = search_non_vector_collection(
                 collection_name=COLLECTION_MESSAGES,
                 filters=filters,
-                limit=len(response_ids),
-                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought"]
+                limit=len(response_ids) + 3,
+                properties=["content", "role", "created_at", "session_id", "agent_id", "feedback", "response_answer_id", "approval_status", "edited_content", "thought", "like_user_ids", "dislike_user_ids"]
             )
             for msg in related_results:
                 related_messages[msg["uuid"]] = msg
         except Exception as e:
             # Log error but don't fail the entire request
             logger.error(f"Failed to fetch related messages: {str(e)}")
-    
     # Attach related messages
     for message in messages:
         response_id = str(message.get("response_answer_id"))
@@ -205,7 +204,6 @@ def attach_related_messages(messages):
             message["related_message"] = related_messages[response_id]
         else:
             message["related_message"] = None
-    
     return messages
 
 def get_message_by_id(message_id: str) -> Dict[str, Any]:

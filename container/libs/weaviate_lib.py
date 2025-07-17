@@ -433,8 +433,6 @@ def insert_to_collection_in_batch(
     uuids = collection.data.insert_many(properties)
     return uuids
 
-
-
 def update_collection_object(
     collection_name: str,
     uuid: str,
