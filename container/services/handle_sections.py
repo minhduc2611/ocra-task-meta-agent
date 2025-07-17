@@ -1,5 +1,5 @@
 import uuid
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 from data_classes.common_classes import Section, Message
 from libs.weaviate_lib import (
@@ -15,7 +15,7 @@ from weaviate.collections.classes.filters import Filter
 from weaviate.collections.classes.grpc import Sort
 from agents.sumary_agent import generate_summary
 
-def create_section(section: Section) -> Section:
+def create_section(section: Section) -> Optional[Dict[str, Any]]:
     """Create a new section
     order: The order of the section
     title: The title of the section
@@ -24,11 +24,11 @@ def create_section(section: Section) -> Section:
     Args:
         section: Section object
     Returns:
-        Section: The created section
+        Dict[str, Any]: The created section data or None if failed
     """
     now = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    if not section.title:
-        messages = [Message(**msg) for msg in section.messages]
+    if not section.title and section.messages:
+        messages = [Message(**msg) if isinstance(msg, dict) else msg for msg in section.messages]
         section.title = generate_summary(messages, section.language)
     if not section.order:
         section.order = 0
@@ -42,8 +42,8 @@ def create_section(section: Section) -> Section:
         "author": section.author,
         "mode": section.mode
     }
-    uuid =  insert_to_collection(COLLECTION_SECTIONS, properties, section.uuid)
-    return get_section_by_id(uuid)
+    section_uuid = insert_to_collection(COLLECTION_SECTIONS, properties, section.uuid)
+    return get_section_by_id(section_uuid)
 
 def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dict[str, Any]], int]:
     """Get all sections with pagination and total count"""
@@ -67,7 +67,7 @@ def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dic
     
     return sections, total_count
 
-def get_section_by_id(section_id: str) -> Section:
+def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
     """Get a section by its ID"""
     filters = Filter.by_id().equal(section_id)
     sections = search_non_vector_collection(
@@ -77,27 +77,49 @@ def get_section_by_id(section_id: str) -> Section:
         filters=filters
     )
 
-    section = Section(**sections[0]) if sections else None
-    return {
-        "uuid": section.uuid,
-        "title": section.title,
-        "order": section.order,
-        "created_at": section.created_at,
-        "updated_at": section.updated_at,
-        "mode": section.mode
-    }
+    if not sections:
+        return None
+    
+    return sections[0]
 
-def update_section(section_id: str, section: Section) -> bool:
-    """Update a section"""
-    now = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
-    properties = {
-        "title": section.title,
-        "order": section.order or 0,
-        "updated_at": now,
-    }
+def update_section(section_id: str, **kwargs) -> bool:
+    """
+    Update a section with partial properties.
+    
+    Args:
+        section_id: The UUID of the section to update
+        **kwargs: Fields to update (title, order, mode, etc.)
+    
+    Returns:
+        bool: True if update successful, False otherwise
+    """
     try:
-        update_collection_object(COLLECTION_SECTIONS, section_id, properties)
+        # Get current section to verify it exists
+        current_section = get_section_by_id(section_id)
+        if not current_section:
+            print(f"Section with ID {section_id} not found")
+            return False
+        
+        # Define allowed fields that can be updated
+        allowed_fields = ["title", "order", "agent_id"]
+        
+        # Build update properties
+        update_data = {}
+        for key, value in kwargs.items():
+            if key in allowed_fields:
+                update_data[key] = value
+        
+        if not update_data:
+            print("No valid fields to update")
+            return False
+        
+        # Always update the updated_at timestamp
+        update_data["updated_at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
+        
+        # Update in Weaviate
+        update_collection_object(COLLECTION_SECTIONS, section_id, update_data)
         return True
+        
     except Exception as e:
         print(f"Error updating section: {str(e)}")
         return False

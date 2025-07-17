@@ -4,7 +4,6 @@ from datetime import datetime
 from enum import Enum
 import json
 
-LINE_BREAK = "\n\n"
 @dataclass
 class StreamEvent:
     type: Literal["text", "end_of_stream", "thought"]
@@ -101,6 +100,7 @@ class Section:
     updated_at: Optional[str] = None
     author: Optional[str] = None
     mode: Optional[str] = None
+    agent_id: Optional[str] = None
 
 @dataclass
 class SignInRequest:

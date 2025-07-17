@@ -26,7 +26,6 @@ def start_fine_tuning():
         model_id = data.get("model_id")
         base_model = data.get("base_model", "gemini-2.5-flash")
         modes = data.get("mode")
-        hyperparameters = data.get("hyperparameters", {})
         
         if not modes:
             return jsonify({"error": "mode must be provided"}), 400
@@ -37,8 +36,7 @@ def start_fine_tuning():
         result = get_messages_list(
             limit=1000,
             include_related=True,
-            modes=modes,
-            approval_status=ApprovalStatus.APPROVED
+            approval_status=ApprovalStatus.APPROVED.value
         )
         if "error" in result:
             return jsonify({"error": f"Failed to get messages: {result['error']}"}), 400
