@@ -12,7 +12,7 @@ from libs.google_vertex import generate_gemini_response
 from libs.langchain import check_model
 from constants.separators import ENDING_SEPARATOR, STARTING_SEPARATOR
 from utils.string_utils import get_text_after_separator
-
+from services.handle_sections import update_section
 class AskError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         self.message = message
@@ -121,6 +121,7 @@ def format_response(chunk: StreamEvent, text_only: bool) -> str:
 
 def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
     try:
+        headers = {}
         # 1. prepare
         last_user_message, previous_assistant_message = prepare_ask(body)
         # 2. generate answer
@@ -172,6 +173,8 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                 user_time = datetime.now()
                 # test agent dont save messages:
                 if not is_test:
+                    response_answer_id = None
+                    
                     if body.mode == "quiz":
                         response_answer_id = insert_to_collection(
                             collection_name=COLLECTION_MESSAGES,
@@ -199,7 +202,6 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                                     "agent_id": body.agent_id,
                                 }
                             )
-                            
                     else:
                         response_answer_id = insert_to_collection(
                             collection_name=COLLECTION_MESSAGES,
@@ -226,13 +228,13 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                                 "agent_id": body.agent_id,
                             }
                         )
-                    
             except Exception as e:
                 raise AskError(str(e), 500)
 
         return Response(
             stream_with_context(generate()),
-            content_type='application/json'
+            content_type='application/json',
+            headers=headers
         )
     except AskError as e:
         return Response(

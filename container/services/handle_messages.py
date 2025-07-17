@@ -26,7 +26,7 @@ class MessageError(Exception):
 
 def handle_chat(session_id: str) -> Dict[str, Any]:
     # Get messages from the database
-    messages = get_messages(session_id, 10)
+    messages = get_messages(session_id, 30)
     # Return the relevant messages
     return messages
 
@@ -49,12 +49,16 @@ def get_messages(session_id: str, limit: int = 10) -> List[Message]:
         collection_name="Messages",
         filters=filters,
         limit=limit,
-        properties=["content", "role", "created_at", "thought"],
+        properties=["content", "role", "created_at", "thought", "like_user_ids", "dislike_user_ids", "feedback", "agent_id"],
         sort=Sort.by_property("created_at", ascending=True).by_property("role", ascending=False)
     )
-    # Get relevant messages from the database
-    # relevant_messages = get_relevant_messages(messages, limit)
-    # Return the relevant messages
+    # turn joined likes into array dict
+    for message in messages:
+        if message.get("like_user_ids"):
+            message["like_user_ids"] = message["like_user_ids"].split(",")
+        if message.get("dislike_user_ids"):
+            message["dislike_user_ids"] = message["dislike_user_ids"].split(",")
+        
     return messages
 
 def get_messages_list(
@@ -148,6 +152,13 @@ def get_messages_list(
         else:
             messages_with_related = messages
 
+        # turn joined likes into array dict
+        for message in messages_with_related:
+            if message.get("like_user_ids"):
+                message["like_user_ids"] = message["like_user_ids"].split(",")
+            if message.get("dislike_user_ids"):
+                message["dislike_user_ids"] = message["dislike_user_ids"].split(",")
+        
         return {
             "messages": messages_with_related,
             "limit": limit,
@@ -209,6 +220,7 @@ def get_message_by_id(message_id: str) -> Dict[str, Any]:
     """
     try:
         message = get_object_by_id(COLLECTION_MESSAGES, message_id)
+        
         if not message:
             return {"error": "Message not found"}
         
@@ -237,7 +249,7 @@ def update_message(message_id: str, **kwargs) -> Dict[str, Any]:
         
         # Update fields
         update_data = {}
-        allowed_fields = ["content", "role", "mode", "feedback", "approval_status", "edited_content", "thought", "response_answer_id"]
+        allowed_fields = ["content", "role", "mode", "feedback", "approval_status", "edited_content", "thought", "response_answer_id", "like_user_ids", "dislike_user_ids"]
         
         for key, value in kwargs.items():
             if key in allowed_fields:
@@ -406,3 +418,139 @@ def fine_tune_messages(messages: List[Dict[str, Any]], base_model: str = "gemini
     except Exception as e:
         logger.error(f"Error fine tuning messages: {str(e)}")
         return {"error": f"Failed to fine tune messages: {str(e)}"}
+
+
+def like_message(message_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    Like a message by adding user_id to like_user_ids and removing from dislike_user_ids.
+    
+    Args:
+        message_id: The UUID of the message
+        user_id: The UUID of the user liking the message
+    
+    Returns:
+        Success/error message with updated message data
+    """
+    try:
+        # Get current message to verify it exists
+        current_message = get_message_by_id(message_id)
+        if "error" in current_message:
+            return current_message
+        
+        message_data = current_message.get("message", {})
+        
+        # Get current like and dislike lists
+        like_user_ids = message_data.get("like_user_ids", "")
+        dislike_user_ids = message_data.get("dislike_user_ids", "")
+        
+        # Convert comma-separated strings to lists
+        like_list = like_user_ids.split(",") if like_user_ids else []
+        dislike_list = dislike_user_ids.split(",") if dislike_user_ids else []
+        
+        # Remove empty strings
+        like_list = [uid for uid in like_list if uid.strip()]
+        dislike_list = [uid for uid in dislike_list if uid.strip()]
+        
+        # Check if user already liked
+        if user_id in like_list:
+            # remove user from like_list
+            like_list.remove(user_id)
+        
+        # Add user to likes and remove from dislikes
+        if user_id not in like_list:
+            like_list.append(user_id)
+            if user_id in dislike_list:
+                dislike_list.remove(user_id)
+        
+        
+        # Convert back to comma-separated strings
+        update_data = {
+            "like_user_ids": ",".join(like_list),
+            "dislike_user_ids": ",".join(dislike_list)
+        }
+        
+        # Update in Weaviate
+        success = update_collection_object(COLLECTION_MESSAGES, message_id, update_data)
+        
+        if success:
+            # Get updated message
+            updated_message = get_message_by_id(message_id)
+            return {
+                "message": "Message liked successfully",
+                "data": updated_message.get("message")
+            }
+        else:
+            return {"error": "Failed to like message"}
+    except Exception as e:
+        logger.error(f"Error liking message: {str(e)}")
+        return {"error": f"Failed to like message: {str(e)}"}
+
+
+def dislike_message(message_id: str, user_id: str) -> Dict[str, Any]:
+    """
+    Dislike a message by adding user_id to dislike_user_ids and removing from like_user_ids.
+    
+    Args:
+        message_id: The UUID of the message
+        user_id: The UUID of the user disliking the message
+    
+    Returns:
+        Success/error message with updated message data
+    """
+    try:
+        # Get current message to verify it exists
+        current_message = get_message_by_id(message_id)
+        if "error" in current_message:
+            return current_message
+        
+        message_data = current_message.get("message", {})
+        
+        # Get current like and dislike lists
+        like_user_ids = message_data.get("like_user_ids", "")
+        dislike_user_ids = message_data.get("dislike_user_ids", "")
+        
+        # Convert comma-separated strings to lists
+        like_list = like_user_ids.split(",") if like_user_ids else []
+        dislike_list = dislike_user_ids.split(",") if dislike_user_ids else []
+        
+        # Remove empty strings
+        like_list = [uid for uid in like_list if uid.strip()]
+        dislike_list = [uid for uid in dislike_list if uid.strip()]
+        
+        # Check if user already disliked
+        if user_id in dislike_list:
+            # remove user from dislike_list
+            dislike_list.remove(user_id)
+        
+        # Add user to dislikes and remove from likes
+        if user_id not in dislike_list:
+            dislike_list.append(user_id)
+            if user_id in like_list:
+                like_list.remove(user_id)
+        
+        # Convert back to comma-separated strings
+        update_data = {
+            "like_user_ids": ",".join(like_list),
+            "dislike_user_ids": ",".join(dislike_list)
+        }
+        
+        # Update in Weaviate
+        success = update_collection_object(COLLECTION_MESSAGES, message_id, update_data)
+        
+        if success:
+            # Get updated message
+            updated_message = get_message_by_id(message_id)
+            if updated_message["message"].get("like_user_ids"):
+                updated_message["message"]["like_user_ids"] = updated_message["message"]["like_user_ids"].split(",")
+            if updated_message["message"].get("dislike_user_ids"):
+                updated_message["message"]["dislike_user_ids"] = updated_message["message"]["dislike_user_ids"].split(",")
+        
+            return {
+                "message": "Message disliked successfully",
+                "data": updated_message.get("message")
+            }
+        else:
+            return {"error": "Failed to dislike message"}
+    except Exception as e:
+        logger.error(f"Error disliking message: {str(e)}")
+        return {"error": f"Failed to dislike message: {str(e)}"}

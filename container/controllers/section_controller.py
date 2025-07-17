@@ -19,6 +19,8 @@ def create_section_endpoint():
     """Create a new section"""
     try:
         body = request.json
+        if not body:
+            return jsonify({"error": "No data provided"}), 400
         section = Section(**body)
         section.author = g.user_id
         section = create_section(section)
@@ -72,8 +74,16 @@ def update_section_endpoint(section_id):
     """Update a section"""
     try:
         body = request.json
-        section = Section(**body)
-        success = update_section(section_id, section)
+        if not body:
+            return jsonify({"error": "No data provided"}), 400
+        # Extract only the fields that can be updated
+        allowed_fields = ["title", "order", "agent_id"]
+        update_data = {key: value for key, value in body.items() if key in allowed_fields}
+        
+        if not update_data:
+            return jsonify({"error": "No valid fields to update"}), 400
+        
+        success = update_section(section_id, **update_data)
         if not success:
             return jsonify({"error": "Section not found"}), 404
         return jsonify({"status": "success"}), 200

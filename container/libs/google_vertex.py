@@ -79,6 +79,10 @@ vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
     
 system_prompt_vi = """
 You are:{{agent_name}}
+RULES: 
+- response in markdown format
+- all quotes should be in blockquote
+- ALWAYS respond in {{base_language}}
 Here is the your persona:
 {{agent_persona}}
 """
@@ -138,6 +142,7 @@ def generate_gemini_response(
     base_system_prompt = base_system_prompt.replace("{{agent_name}}", agent_name)
     base_system_prompt = base_system_prompt.replace("{{STARTING_SEPARATOR}}", STARTING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{ENDING_SEPARATOR}}", ENDING_SEPARATOR)
+    base_system_prompt = base_system_prompt.replace("{{base_language}}", "Vietnamese" if base_language == Language.VI.value else "English")
     base_system_prompt = base_system_prompt.replace("{{agent_persona}}", agent["system_prompt"] if agent else "")
     corpus_id = agent["corpus_id"]
     rag_retrieval_tool_2 = None

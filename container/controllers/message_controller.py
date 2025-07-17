@@ -1,8 +1,8 @@
 from flask import request, jsonify, g
 from __init__ import app, login_required
-from services.handle_messages import update_message, delete_message, get_message_by_id, get_messages_list, MessageError, save_q_and_a_pairs_to_system
+from services.handle_messages import update_message, delete_message, get_message_by_id, get_messages_list, MessageError, save_q_and_a_pairs_to_system, like_message, dislike_message
 import logging
-
+import json
 logger = logging.getLogger(__name__)
 
 @app.route('/api/v1/messages', methods=['GET'])
@@ -51,9 +51,15 @@ def update_message_endpoint(message_id):
         data = request.get_json()
         if not data:
             return jsonify({"error": "No data provided"}), 400
+        
+        # data is an json array, now join it with , 
+        if "like_user_ids" in data:
+            data["like_user_ids"] = ",".join(data["like_user_ids"])
+        if "dislike_user_ids" in data:
+            data["dislike_user_ids"] = ",".join(data["dislike_user_ids"])
 
         # Validate required fields
-        allowed_fields = ["content", "role", "mode", "feedback", "edited_content", "approval_status"]
+        allowed_fields = ["content", "role", "mode", "feedback", "edited_content", "approval_status", "like_user_ids", "dislike_user_ids"]
         update_data = {}
         
         for field in allowed_fields:
@@ -154,15 +160,46 @@ def save_q_and_a_pairs_to_system_endpoint():
 
     except Exception as e:
         logger.error(f"Error in save_q_and_a_pairs_to_system_endpoint: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500 
-    
+        return jsonify({"error": "Internal server error"}), 500
 
-# @app.route('/api/v1/messages/fine-tune', methods=['POST'])
-# @login_required
-# def fine_tune_messages_endpoint():
-#     """Fine tune messages"""
-#     try:
-#         # Get request data
-#         data = request.get_json()
-#         if not data:
-#             return jsonify({"error": "No data provided"}), 400
+@app.route('/api/v1/messages/<message_id>/like', methods=['POST'])
+@login_required
+def like_message_endpoint(message_id):
+    """Like a message"""
+    try:
+        user_id = g.user_id
+        
+        # Like message
+        result = like_message(message_id, user_id)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        
+        return jsonify(result), 200
+
+    except MessageError as e:
+        return jsonify({"error": e.message}), e.status_code
+    except Exception as e:
+        logger.error(f"Error in like_message_endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/v1/messages/<message_id>/dislike', methods=['POST'])
+@login_required
+def dislike_message_endpoint(message_id):
+    """Dislike a message"""
+    try:
+        user_id = g.user_id
+        
+        # Dislike message
+        result = dislike_message(message_id, user_id)
+        
+        if "error" in result:
+            return jsonify({"error": result["error"]}), 400
+        
+        return jsonify(result), 200
+
+    except MessageError as e:
+        return jsonify({"error": e.message}), e.status_code
+    except Exception as e:
+        logger.error(f"Error in dislike_message_endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500

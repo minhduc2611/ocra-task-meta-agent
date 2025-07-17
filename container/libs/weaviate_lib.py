@@ -102,6 +102,12 @@ def initialize_schema() -> None:
     try:
         messages_collection = client.collections.get(COLLECTION_MESSAGES)
         messages_collection.config.add_property(
+            wvc.config.Property(name="like_user_ids", data_type=wvc.config.DataType.TEXT),
+        )
+        messages_collection.config.add_property(
+            wvc.config.Property(name="dislike_user_ids", data_type=wvc.config.DataType.TEXT),
+        )
+        messages_collection.config.add_property(
             wvc.config.Property(name="agent_id", data_type=wvc.config.DataType.UUID)
         )
         messages_collection.config.add_property(
