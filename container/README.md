@@ -70,6 +70,13 @@ python example_meta_agent.py
 python main.py
 ```
 
+### change google project id in .env
+```
+gcloud config set project llm-project-2d719
+gcloud auth application-default set-quota-project llm-project-2d719
+```
+
+
 ## 📖 Usage
 
 ### Meta Agent - Building AI Agents
