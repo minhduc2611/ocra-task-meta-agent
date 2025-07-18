@@ -19,7 +19,7 @@ def tts_stream_options():
 def tts_base64_options():
     """Handle OPTIONS request for TTS stream endpoint"""
     response = jsonify({})
-    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Origin', 'https://buddha-rag-prod.netlify.app')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
     return response
