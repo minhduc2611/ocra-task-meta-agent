@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 def tts_stream_options():
     """Handle OPTIONS request for TTS stream endpoint"""
     response = jsonify({})
-    response.headers.add('Access-Control-Allow-Origin', 'https://buddha-rag-prod.netlify.app, http://localhost:3000')
+    response.headers.add('Access-Control-Allow-Origin', 'https://buddha-rag-prod.netlify.app')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
     response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
     return response
