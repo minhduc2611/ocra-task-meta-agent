@@ -12,7 +12,11 @@ from services.handle_auth import verify_jwt_token, AuthError
 from services.handle_api_keys import validate_api_key
 
 app = Flask(__name__)
-CORS(app, expose_headers=["X-Total-Count", "X-Page-Size", "X-Page-Number", "X-Total-Pages"])
+CORS(app, expose_headers=["X-Total-Count", "X-Page-Size", "X-Page-Number", "X-Total-Pages"],
+     origins=["https://buddha-rag-prod.netlify.app", "http://localhost:3000"],
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["POST", "OPTIONS", "GET", "PUT", "DELETE"],
+     )
 
 def login_required(f):
     @wraps(f)
