@@ -62,4 +62,5 @@ from controllers.message_controller import *
 from controllers.fine_tuning_model_controller import *
 from controllers.fine_tuning_controller import *
 from controllers.api_key_controller import *
+from controllers.tts_controller import *
 
