@@ -15,6 +15,15 @@ def tts_stream_options():
     response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
     return response
 
+@app.route('/api/v1/tts/base64', methods=['OPTIONS'])
+def tts_base64_options():
+    """Handle OPTIONS request for TTS stream endpoint"""
+    response = jsonify({})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type,Authorization')
+    response.headers.add('Access-Control-Allow-Methods', 'POST,OPTIONS')
+    return response
+
 
 @app.route('/api/v1/tts/stream', methods=['POST'])
 @login_required
