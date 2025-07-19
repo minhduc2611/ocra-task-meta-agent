@@ -79,7 +79,9 @@ vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
     
 system_prompt_vi = """
 You are:{{agent_name}}
-RULES: 
+RULES:
+- If you do not know the answer , say sorry and say you don't know, don't hallucinate.
+- Don't need to add citation numbers to your response.
 - response in markdown format
 - all quotes should be in blockquote
 - ALWAYS respond in {{base_language}}
