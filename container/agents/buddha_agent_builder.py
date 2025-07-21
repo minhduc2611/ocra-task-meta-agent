@@ -313,14 +313,13 @@ def generate_buddha_agent_response_sync(messages: List[Message], contexts: List[
             return f"Error generating response: {str(e)}"
 
 # Convenience function for creating Buddhist agents
-# def create_simple_buddhist_agent(name: str, description: str, buddhist_focus: str, language: str = "en", author: str = "system") -> Dict[str, Any]:
+# def create_simple_buddhist_agent(name: str, description: str, language: str = "en", author: str = "system") -> Dict[str, Any]:
 #     """
 #     Create a simple Buddhist agent with basic configuration.
     
 #     Args:
 #         name: Name of the agent
 #         description: Description of the agent
-#         buddhist_focus: Buddhist focus area
 #         language: Language preference ("en" for English, "vi" for Vietnamese)
 #         author: Author of the agent
     
@@ -330,7 +329,6 @@ def generate_buddha_agent_response_sync(messages: List[Message], contexts: List[
 #     return create_buddhist_agent(
 #         name=name,
 #         description=description,
-#         buddhist_focus=buddhist_focus,
 #         language=language,
 #         author=author
 #     )

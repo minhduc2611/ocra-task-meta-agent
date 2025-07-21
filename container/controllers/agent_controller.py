@@ -155,7 +155,7 @@ def chat_with_agent_endpoint(agent_id):
         
         try:
             if is_streaming:
-                return handle_ask_streaming(ask_request, False)
+                return handle_ask_streaming(ask_request, True)
             else:
                 results = handle_ask_non_streaming(ask_request)
                 return jsonify(results), 200

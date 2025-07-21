@@ -39,7 +39,7 @@ def close_client():
     client.close()
 COLLECTION_DOCUMENTS = "Documents"
 COLLECTION_MESSAGES = "Messages"
-COLLECTION_SECTIONS = "Sections"
+COLLECTION_CHATS = "Sections"
 COLLECTION_USERS = "Users"
 COLLECTION_FILES = "Files"
 COLLECTION_TOKEN_BLACKLIST = "TokenBlacklist"
@@ -156,10 +156,10 @@ def initialize_schema() -> None:
             ]
         )
         print("🙌🏼 Collection ApiKeys created successfully")
-    exists = client.collections.exists(COLLECTION_SECTIONS)
+    exists = client.collections.exists(COLLECTION_CHATS)
     if not exists:
         client.collections.create(
-            name=COLLECTION_SECTIONS,
+            name=COLLECTION_CHATS,
             properties=[
                 wvc.config.Property(name="title", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="content", data_type=wvc.config.DataType.TEXT),
@@ -172,6 +172,16 @@ def initialize_schema() -> None:
             ]
         )
         print("🙌🏼 Collection Sections created successfully")
+    # add thought property to Chats collection
+    try:
+        chats_collection = client.collections.get(COLLECTION_CHATS)
+        chats_collection.config.add_property(
+            wvc.config.Property(name="context", data_type=wvc.config.DataType.TEXT),
+        )
+        print("🙌🏼 Collection Sections updated successfully")
+    except Exception as e:
+        print(f"Error adding context and thought property to Chats collection: {e}")
+    
     exists = client.collections.exists(COLLECTION_USERS)
     if not exists:
         client.collections.create(

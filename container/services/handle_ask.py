@@ -1,4 +1,4 @@
-from typing import List, Dict, Any, Generator
+from typing import List, Dict, Any, Generator, Optional
 import json
 from libs.weaviate_lib import search_documents, insert_to_collection_in_batch, insert_to_collection, COLLECTION_MESSAGES
 from data_classes.common_classes import AskRequest, Message, ApprovalStatus, Agent, Language, AgentProvider, StreamEvent
@@ -12,7 +12,8 @@ from libs.google_vertex import generate_gemini_response
 from libs.langchain import check_model
 from constants.separators import ENDING_SEPARATOR, STARTING_SEPARATOR
 from utils.string_utils import get_text_after_separator
-from services.handle_sections import update_section
+from services.handle_sections import get_section_by_id, update_section
+from agents.context_agent import generate_context
 class AskError(Exception):
     def __init__(self, message: str, status_code: int = 400):
         self.message = message
@@ -43,7 +44,24 @@ def get_agent(agent_id: str, language: Language) -> Agent:
     agent = get_agent_by_id(agent_id)
     if not agent or "error" in agent:
         return get_default_buddha_agent(language)
-    return agent
+    return Agent(
+        name=agent["name"],
+        description=agent["description"],
+        system_prompt=agent["system_prompt"],
+        tools=agent["tools"],
+        model=agent["model"],
+        temperature=agent["temperature"],
+        language=agent["language"],
+        created_at=agent["created_at"],
+        updated_at=agent["updated_at"],
+        author=agent["author"],
+        status=agent["status"],
+        agent_type=agent["agent_type"],
+        uuid=agent["uuid"],
+        corpus_id=agent["corpus_id"],
+        tags=agent["tags"],
+        conversation_starters=agent["conversation_starters"],
+    )
 
 def handle_insert_messages(body: AskRequest, last_user_message: Message, answer: str):
     user_time = datetime.now()
@@ -67,10 +85,12 @@ def handle_insert_messages(body: AskRequest, last_user_message: Message, answer:
 def handle_ask_non_streaming(body: AskRequest) -> str:
     try:
         # 1. prepare
+        if not body.agent_id:
+            raise AskError("Agent ID is required", 400)
         last_user_message, previous_assistant_message = prepare_ask(body)
         contexts = get_contexts(last_user_message)
-        agent = get_agent(body.agent_id, body.language)
-        provider = check_model(agent["model"])
+        agent = get_agent(body.agent_id or "", body.language)
+        provider = check_model(agent.model)
         # 2. generate answer
         match provider.value:
             case AgentProvider.OPENAI.value:
@@ -86,6 +106,7 @@ def handle_ask_non_streaming(body: AskRequest) -> str:
                 response: str = generate_gemini_response(
                     agent = agent,
                     messages = body.messages, 
+                    context = contexts,
                     stream = False
                 )
         # answer = generate_answer(body.messages, contexts, body.options, body.language, body.model)
@@ -137,7 +158,14 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                 agent = get_agent(body.agent_id, body.language)
                 if not agent:
                     raise AskError("Agent not found", 404)
-                provider = check_model(agent["model"])
+                context: Optional[str] = None
+                if body.session_id:
+                    chat_section = get_section_by_id(body.session_id)
+                    if chat_section:
+                        context = chat_section.get("context", None)
+                    else:
+                        context = None
+                provider = check_model(agent.model)
                 match provider.value:
                     case AgentProvider.OPENAI.value:
                         contexts = get_contexts(last_user_message)
@@ -152,8 +180,10 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                         stream: Generator[StreamEvent, None, None] = generate_gemini_response(
                             agent = agent,
                             messages = body.messages, 
+                            context = context,
                             stream = True
                         )
+                
                 full_response = ""
                 thought_response = ""
                 for chunk in stream: 
@@ -165,69 +195,86 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                         thought_response += chunk.data
                         yield format_response(chunk, text_only)
                     elif chunk.type == "end_of_stream":
-                        yield format_response(chunk, text_only)
-                
-                # response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
-                
-                # After streaming is complete, save the messages
-                user_time = datetime.now()
-                # test agent dont save messages:
-                if not is_test:
-                    response_answer_id = None
-                    
-                    if body.mode == "quiz":
-                        response_answer_id = insert_to_collection(
-                            collection_name=COLLECTION_MESSAGES,
-                            properties={
-                                "session_id": body.session_id,
-                                "content": last_user_message.content,
-                                "role": last_user_message.role,
-                                "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "mode": body.mode,
-                                "agent_id": body.agent_id,
-                            }
-                        )
+                        # response_content, response_thought = get_text_after_separator(full_response, ENDING_SEPARATOR)
                         
-                        if previous_assistant_message:
-                            insert_to_collection(
-                                collection_name=COLLECTION_MESSAGES,
-                                properties={
-                                    "session_id": body.session_id,
-                                    "content": previous_assistant_message.content,
-                                    "role": "assistant",
-                                    "mode": body.mode,
-                                    "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                    "approval_status": ApprovalStatus.PENDING.value,
-                                    "response_answer_id": str(response_answer_id),
-                                    "agent_id": body.agent_id,
-                                }
-                            )
-                    else:
-                        response_answer_id = insert_to_collection(
-                            collection_name=COLLECTION_MESSAGES,
-                            properties={
-                                "session_id": body.session_id,
-                                "content": full_response,
-                                "thought": thought_response,
-                                "role": "assistant",
-                                "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "mode": body.mode,
-                                "agent_id": body.agent_id,
-                            }
-                        )
-                        insert_to_collection(
-                            collection_name=COLLECTION_MESSAGES,
-                            properties={
-                                "session_id": body.session_id,
-                                "content": last_user_message.content,
-                                "role": last_user_message.role,
-                                "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                "mode": body.mode,
-                                "response_answer_id": str(response_answer_id),
-                                "approval_status": ApprovalStatus.PENDING.value,
-                                "agent_id": body.agent_id,
-                            }
-                        )
+                        # After streaming is complete, save the messages
+                        user_time = datetime.now()
+                        # test agent dont save messages:
+                        if not is_test:
+                            response_answer_id = None
+                            
+                            if body.mode == "quiz":
+                                response_answer_id = insert_to_collection(
+                                    collection_name=COLLECTION_MESSAGES,
+                                    properties={
+                                        "session_id": body.session_id,
+                                        "content": last_user_message.content,
+                                        "role": last_user_message.role,
+                                        "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                        "mode": body.mode,
+                                        "agent_id": body.agent_id,
+                                    }
+                                )
+                                
+                                if previous_assistant_message:
+                                    insert_to_collection(
+                                        collection_name=COLLECTION_MESSAGES,
+                                        properties={
+                                            "session_id": body.session_id,
+                                            "content": previous_assistant_message.content,
+                                            "role": "assistant",
+                                            "mode": body.mode,
+                                            "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                            "approval_status": ApprovalStatus.PENDING.value,
+                                            "response_answer_id": str(response_answer_id),
+                                            "agent_id": body.agent_id,
+                                        }
+                                    )
+                            else:
+                                response_answer_id = insert_to_collection(
+                                    collection_name=COLLECTION_MESSAGES,
+                                    properties={
+                                        "session_id": body.session_id,
+                                        "content": full_response,
+                                        "thought": thought_response,
+                                        "role": "assistant",
+                                        "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                        "mode": body.mode,
+                                        "agent_id": body.agent_id,
+                                    }
+                                )
+                                question_id = insert_to_collection(
+                                    collection_name=COLLECTION_MESSAGES,
+                                    properties={
+                                        "session_id": body.session_id,
+                                        "content": last_user_message.content,
+                                        "role": last_user_message.role,
+                                        "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                        "mode": body.mode,
+                                        "response_answer_id": str(response_answer_id),
+                                        "approval_status": ApprovalStatus.PENDING.value,
+                                        "agent_id": body.agent_id,
+                                    }
+                                )
+                        chunk.metadata = {
+                            "question_id": str(question_id),
+                            "response_answer_id": str(response_answer_id),
+                        }
+                        yield format_response(chunk, text_only)
+                        if body.session_id:
+                            new_context = generate_context(last_user_message.content, context)
+                            if new_context:
+                                if chat_section:
+                                    update_section(
+                                        section_id=body.session_id,
+                                        context=new_context,
+                                    )
+                                # else:
+                                #     insert_to_collection(
+                                #         collection_name=COLLECTION_CHATS,
+                                #         properties={"context": new_context},
+                                #     )
+                
             except Exception as e:
                 raise AskError(str(e), 500)
 
