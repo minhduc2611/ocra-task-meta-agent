@@ -3,7 +3,7 @@ from typing import List, Dict, Any, Optional
 from datetime import datetime
 from data_classes.common_classes import Section, Message
 from libs.weaviate_lib import (
-    COLLECTION_SECTIONS,
+    COLLECTION_CHATS,
     insert_to_collection,
     search_non_vector_collection,
     search_vector_collection,
@@ -42,7 +42,7 @@ def create_section(section: Section) -> Optional[Dict[str, Any]]:
         "author": section.author,
         "mode": section.mode
     }
-    section_uuid = insert_to_collection(COLLECTION_SECTIONS, properties, section.uuid)
+    section_uuid = insert_to_collection(COLLECTION_CHATS, properties, section.uuid)
     return get_section_by_id(section_uuid)
 
 def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dict[str, Any]], int]:
@@ -51,7 +51,7 @@ def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dic
     
     # Get sections data
     sections = search_non_vector_collection(
-        collection_name=COLLECTION_SECTIONS,
+        collection_name=COLLECTION_CHATS,
         limit=limit,
         offset=offset,
         properties=["title", "order", "created_at", "updated_at", "mode"],
@@ -61,7 +61,7 @@ def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dic
     
     # Get total count
     total_count = get_collection_count(
-        collection_name=COLLECTION_SECTIONS,
+        collection_name=COLLECTION_CHATS,
         filters=filters
     )
     
@@ -71,9 +71,9 @@ def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
     """Get a section by its ID"""
     filters = Filter.by_id().equal(section_id)
     sections = search_non_vector_collection(
-        collection_name=COLLECTION_SECTIONS,
+        collection_name=COLLECTION_CHATS,
         limit=1,
-        properties=["title", "order", "created_at", "updated_at", "mode"],
+        properties=["title", "order", "created_at", "updated_at", "mode", "context"],
         filters=filters
     )
 
@@ -101,7 +101,7 @@ def update_section(section_id: str, **kwargs) -> bool:
             return False
         
         # Define allowed fields that can be updated
-        allowed_fields = ["title", "order", "agent_id"]
+        allowed_fields = ["title", "order", "agent_id", "context"]
         
         # Build update properties
         update_data = {}
@@ -117,7 +117,7 @@ def update_section(section_id: str, **kwargs) -> bool:
         update_data["updated_at"] = datetime.now().strftime("%Y-%m-%dT%H:%M:%SZ")
         
         # Update in Weaviate
-        update_collection_object(COLLECTION_SECTIONS, section_id, update_data)
+        update_collection_object(COLLECTION_CHATS, section_id, update_data)
         return True
         
     except Exception as e:
@@ -127,7 +127,7 @@ def update_section(section_id: str, **kwargs) -> bool:
 def delete_section(section_id: str) -> bool:
     """Delete a section"""
     try:
-        delete_collection_object(COLLECTION_SECTIONS, section_id)
+        delete_collection_object(COLLECTION_CHATS, section_id)
         return True
     except Exception as e:
         print(f"Error deleting section: {str(e)}")
@@ -136,8 +136,8 @@ def delete_section(section_id: str) -> bool:
 def search_sections(query: str, limit: int = 10) -> List[Dict[str, Any]]:
     """Search sections by content"""
     return search_vector_collection(
-        collection_name=COLLECTION_SECTIONS,
+        collection_name=COLLECTION_CHATS,
         query=query,
         limit=limit,
-        properties=["title", "order", "created_at", "updated_at", "mode"]
+        properties=["title", "order", "created_at", "updated_at", "mode", "context"]
     ) 

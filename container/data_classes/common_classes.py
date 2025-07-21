@@ -82,6 +82,8 @@ class Agent:
     agent_type: str
     uuid: str
     corpus_id: Optional[str] = None
+    tags: Optional[List[str]] = None
+    conversation_starters: Optional[List[str]] = None
 
 @dataclass
 class Pagination:
@@ -101,6 +103,7 @@ class Section:
     author: Optional[str] = None
     mode: Optional[str] = None
     agent_id: Optional[str] = None
+    context: Optional[str] = None
 
 @dataclass
 class SignInRequest:

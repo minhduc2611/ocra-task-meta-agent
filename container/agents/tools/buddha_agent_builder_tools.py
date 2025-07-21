@@ -81,7 +81,6 @@ BUDDHIST_TEACHINGS = {
 @tool
 def create_buddhist_agent(
     name: str, description: str, 
-    buddhist_focus: str, 
     language: str = "en", 
     system_prompt: str = None, 
     model: str = "gpt-4o-mini", 
@@ -96,7 +95,6 @@ def create_buddhist_agent(
     Args:
         name: Name of the agent
         description: Description of what the agent does
-        buddhist_focus: Specific Buddhist focus (e.g., "Buddhist Search & Review", "Buddhist Write Verses", "Buddhist Quiz Questions", "Buddhist Life Guidance")
         language: Language preference ("en" for English, "vi" for Vietnamese)
         system_prompt: Custom system prompt
         model: The LLM model to use (gpt-4o-mini, gpt-4o, gemini-2.0-flash-001)
@@ -113,12 +111,11 @@ def create_buddhist_agent(
         
         # Generate system prompt if not provided
         if not system_prompt:
-            system_prompt = generate_buddhist_system_prompt(buddhist_focus, language)
+            system_prompt = generate_buddhist_system_prompt(language)
         
         agent_config = {
             "name": name,
             "description": description,
-            "buddhist_focus": buddhist_focus,
             "language": language,
             "system_prompt": system_prompt,
             "tools": json.dumps([]),
@@ -140,7 +137,6 @@ def create_buddhist_agent(
             "agent_id": agent_id,
             "name": name,
             "description": description,
-            "buddhist_focus": buddhist_focus,
             "system_prompt": system_prompt,
             "model": model,
             "temperature": temperature,
@@ -149,24 +145,23 @@ def create_buddhist_agent(
             "conversation_starters": json.dumps(conversation_starters),
             "tags": json.dumps(tags),
             "status": AgentStatus.ACTIVE.value,
-            "message": f"Buddhist agent '{name}' created successfully with focus on {buddhist_focus} in {language}"
+            "message": f"Buddhist agent '{name}' created successfully in {language}"
         }
     except Exception as e:
         return {"error": f"Failed to create Buddhist agent: {str(e)}"}
       
 @tool
-def generate_buddhist_system_prompt(focus: str, language: str = "en") -> str:
+def generate_buddhist_system_prompt(language: str = "en") -> str:
     """
-    Generate a system prompt for a Buddhist agent based on focus area and language.
+    Generate a system prompt for a Buddhist agent based on language.
     
     Args:
-        focus: The Buddhist focus area
         language: Language preference ("en" for English, "vi" for Vietnamese)
     
     Returns:
         Generated system prompt
     """
-    return basic_openai_answer(query=f"Generate a system prompt for a Buddhist agent based on focus area and language. Focus: {focus}, Language: {language}")
+    return basic_openai_answer(query=f"Generate a system prompt for a Buddhist agent based on language. Language: {language}")
    
 
 @tool
@@ -563,7 +558,6 @@ def test_buddhist_agent(agent_id: str, test_input: str) -> Dict[str, Any]:
         return {
             "agent_id": agent_id,
             "agent_name": agent_config.get("name", "Unknown"),
-            "buddhist_focus": agent_config.get("buddhist_focus", "general"),
             "test_input": test_input,
             "response": response.content,
             "model_used": model_name,
@@ -730,7 +724,7 @@ def update_buddhist_agent(agent_id: str, updates: Dict[str, Any]) -> Dict[str, A
     When updating system_prompt, try to keep, combine or modify the original system_prompt and suggest the changes to the user.
     Args:
         agent_id: The UUID of the agent to update
-        updates: Dictionary containing the fields to update (name, description, buddhist_focus, language, system_prompt, model, temperature, status)
+        updates: Dictionary containing the fields to update (name, description, language, system_prompt, model, temperature, status)
     
     Returns:
         Dictionary containing the update result
@@ -749,7 +743,7 @@ def update_buddhist_agent(agent_id: str, updates: Dict[str, Any]) -> Dict[str, A
         
         # Prepare update data
         update_data = {}
-        allowed_fields = ["name", "description", "buddhist_focus", "language", "system_prompt", "model", "temperature", "status"]
+        allowed_fields = ["name", "description", "language", "system_prompt", "model", "temperature", "status"]
         
         for field, value in updates.items():
             if field in allowed_fields:

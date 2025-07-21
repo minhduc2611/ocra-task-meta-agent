@@ -3,9 +3,8 @@ from vertexai.generative_models import GenerativeModel, GenerationConfig, ground
 from vertexai.generative_models import Tool
 from vertexai import rag
 from vertexai.rag.utils.resources import TransformationConfig, ChunkingConfig
-from typing import Generator
+from typing import Generator, List, Optional
 from data_classes.common_classes import Agent, Message, Language, StreamEvent
-from typing import List
 from dotenv import load_dotenv
 from vertexai.preview.generative_models import Content, Part
 from werkzeug.datastructures import FileStorage 
@@ -37,92 +36,35 @@ if not RAG_LOCATION:
 
 # RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/6917529027641081856"
 
-# Optional: Configure chunking for your RAG files
-# You can adjust these values based on your needs
 TRANSFORMATION_CONFIG: TransformationConfig = TransformationConfig(
     chunking_config=ChunkingConfig(
         chunk_size=1024,
         chunk_overlap=200,
     ),
 )
-# - Suy nghĩ từng bước trước khi trả lời. sau khi suy nghĩ xong, viết "****" để đánh dấu kết thúc suy nghĩ, rồi trả lời.
-# 
+
 vertexai.init(project=PROJECT_ID, location=RAG_LOCATION)
-
-# You are an advanced AI assistant named: {{agent_name}}. Your goal is to provide responses. A key part of your process is transparency in your thinking.
-
-# # Core Instruction: 
-# For every user query, you must first engage in a "Chain of Thought" sequence before delivering the final answer. This internal monologue or reasoning process should be explicitly written out.
-# Example Delimiter: Use a clear visual separator, use {{STARTING_SEPARATOR}} to open your Chain of Thought process, use {{ENDING_SEPARATOR}} to close your Chain of Thought process before presenting the final response.
-
-# # ALWAYS Follow this Chain of Thought Structure:
-
-# {{STARTING_SEPARATOR}}
-# ## Defining the Persona 
-# ## Refining the Approach
-# ## Embodying the Style
-# ## Analyzing the Scene 
-# ## Structuring the Re-enactment
-# ## Structuring the Response
-# ## Structuring the Re-enactment
-
-# {{ENDING_SEPARATOR}}
-
-# After the complete "Chain of Thought" block, present the final, polished answer to the user.
-# Clearly show what you have thought in an organized way.
-# <example>
-# {{agent_name}} có biết một bài kệ từ Sư Tam Vô:
-# {{agent_name}} xin được chia sẻ một bài kệ từ Sư Tam Vô:
-# </example>
 
 # Here is you:
     
-system_prompt_vi = """
+system_prompt = """
 You are:{{agent_name}}
+Here is the your persona:
+{{agent_persona}}
+
 RULES:
 - If you do not know the answer , say sorry and say you don't know, don't hallucinate.
 - Don't need to add citation numbers to your response.
 - response in markdown format
 - all quotes should be in blockquote
 - ALWAYS respond in {{base_language}}
-Here is the your persona:
-{{agent_persona}}
-"""
-
-system_prompt_en = """
-You are an AI assistant designed to provide detailed, comprehensive, and complete answers.
-
-RESPONSE STYLE:
-- Respond naturally, warmly, and empathetically
-- Understand the user's emotions and perspective before providing an answer
-- Use accessible language while maintaining philosophical depth
-- Present multiple viewpoints for the user to contemplate
-- End with thought-provoking questions to encourage deeper thinking
-
-Always expand your response by:
-- Providing in-depth and detailed explanations
-- Including multiple specific examples and illustrations
-- Adding relevant background information and context
-- Analyzing deeply from multiple perspectives
-- Presenting multi-dimensional viewpoints
-- Concluding with summaries and practical implications
-
-Ensure your response is comprehensive and detailed, unless the user requests a shorter response.
-When receiving a question seeking information, provide an answer that demonstrates a deep understanding of the subject area, ensuring accuracy.
-For questions requiring reasoning, clearly explain each step in the reasoning process before presenting the final answer.
-
-IMPORTANT:
-- Tone, language and writing style must be the same as the knowledge base provided.
-- Always return in markdown.
-- Think step by step before answering. After thinking, write "****" to mark the end of thinking, then answer.
-
-Here is you:
-\n\n
+{{context}}
 """
 
 def generate_gemini_response(
     agent: Agent,
     messages: List[Message], 
+    context: Optional[str] = None,
     stream: bool = False
 ) -> str | Generator[StreamEvent, None, None]:
     """
@@ -136,18 +78,22 @@ def generate_gemini_response(
     """
     if not agent:
         raise Exception("Agent is required")
-    base_language = agent["language"] if agent else Language.VI.value
-    base_model = agent["model"] if agent else "gemini-2.0-flash-001"
-    base_temperature = agent["temperature"] if agent else 1
-    agent_name = agent["name"] if agent else "Sư Tam Vô AI"
-    base_system_prompt = (system_prompt_vi if base_language == Language.VI.value else system_prompt_en)
+    base_language = getattr(agent, "language", Language.VI.value)
+    base_model = getattr(agent, "model", "gemini-2.0-flash-001")
+    base_temperature = getattr(agent, "temperature", 1)
+    agent_name = getattr(agent, "name", "Sư Tam Vô AI")
+    
+    base_system_prompt = system_prompt
     base_system_prompt = base_system_prompt.replace("{{agent_name}}", agent_name)
     base_system_prompt = base_system_prompt.replace("{{STARTING_SEPARATOR}}", STARTING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{ENDING_SEPARATOR}}", ENDING_SEPARATOR)
     base_system_prompt = base_system_prompt.replace("{{base_language}}", "Vietnamese" if base_language == Language.VI.value else "English")
-    base_system_prompt = base_system_prompt.replace("{{agent_persona}}", agent["system_prompt"] if agent else "")
-    corpus_id = agent["corpus_id"]
+    base_system_prompt = base_system_prompt.replace("{{agent_persona}}", getattr(agent, "system_prompt", ""))
+    base_system_prompt = base_system_prompt.replace("{{context}}", context or "")
+    corpus_id = getattr(agent, "corpus_id", None)
+    
     rag_retrieval_tool_2 = None
+    
     if corpus_id:
         RAG_CORPUS_NAME = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
         rag_retrieval_tool_2 = types.Tool(
@@ -360,10 +306,14 @@ def delete_corpus(corpus_id: str) -> str:
     rag.delete_corpus(full_corpus_path)
     return f"Corpus '{corpus_id}' deleted successfully."
 
-def list_corpora() -> List[RagCorpus]:
+def list_corpora():
     """List all RAG corpora in the project"""
-    parent = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}"
-    return rag.list_corpora(parent)
+    try:
+        corpora_pager = rag.list_corpora(page_size=100)
+        return list(corpora_pager) if corpora_pager else []
+    except Exception as e:
+        logger.error(f"Error listing corpora: {e}")
+        return []
 
 def upload_to_gcs(file_path: str, bucket_name: str) -> str:
     """Upload a file to Google Cloud Storage"""
@@ -379,8 +329,8 @@ def upload_to_gcs(file_path: str, bucket_name: str) -> str:
 def create_fine_tuning_job(
     training_data_path: str,
     base_model: str = "gemini-2.5-flash",
-    model_display_name: str = None,
-    hyperparameters: Dict[str, Any] = None
+    model_display_name: Optional[str] = None,
+    hyperparameters: Optional[Dict[str, Any]] = None
 ) -> Dict[str, Any]:
     """
     Create a fine-tuning job using Google Vertex AI.
