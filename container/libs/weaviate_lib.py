@@ -167,7 +167,6 @@ def initialize_schema() -> None:
                 wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
                 wvc.config.Property(name="updated_at", data_type=wvc.config.DataType.DATE),
                 wvc.config.Property(name="author", data_type=wvc.config.DataType.TEXT),
-                wvc.config.Property(name="mode", data_type=wvc.config.DataType.TEXT),
                 wvc.config.Property(name="language", data_type=wvc.config.DataType.TEXT),
             ]
         )

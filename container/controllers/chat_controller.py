@@ -21,7 +21,7 @@ def ask_endpoint(session_id):
             options=body.get('options'),
             model=body.get('model', 'gpt-4o'),
             agent_id=body.get('agent_id'),
-            mode=body.get('mode'),
+            context=body.get('context'),
         )
         # session_id
         if not session_id:

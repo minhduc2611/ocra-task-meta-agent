@@ -15,7 +15,7 @@ def handle_upload_file(files: List[FileStorage], agent_id: str) -> Generator[Dic
     
     if not agent["corpus_id"]:
         yield {"status": "creating_corpus", "message": "Creating RAG corpus..."}
-        rag_corpus = add_corpus()
+        rag_corpus = add_corpus(display_name=agent["name"])
         corpus_id = rag_corpus.name.split("/")[-1]
         agent["corpus_id"] = corpus_id
         update_agent(agent_id, corpus_id=corpus_id)

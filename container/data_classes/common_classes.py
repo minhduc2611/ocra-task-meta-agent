@@ -55,7 +55,7 @@ class AskRequest:
     language: Language = Language.VI
     options: Optional[Dict[str, Any]] = None
     agent_id: Optional[str] = None
-    mode: Optional[str] = None
+    context: Optional[str] = None
 
 class AgentStatus(Enum):
     ACTIVE = "active"

@@ -180,7 +180,7 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                         stream: Generator[StreamEvent, None, None] = generate_gemini_response(
                             agent = agent,
                             messages = body.messages, 
-                            context = context,
+                            context = context if context else "" + ( "\n" + body.context if body.context else "" ),
                             stream = True
                         )
                 
@@ -203,59 +203,55 @@ def handle_ask_streaming(body: AskRequest, is_test: bool = False) -> Response:
                         if not is_test:
                             response_answer_id = None
                             
-                            if body.mode == "quiz":
-                                response_answer_id = insert_to_collection(
-                                    collection_name=COLLECTION_MESSAGES,
-                                    properties={
-                                        "session_id": body.session_id,
-                                        "content": last_user_message.content,
-                                        "role": last_user_message.role,
-                                        "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                        "mode": body.mode,
-                                        "agent_id": body.agent_id,
-                                    }
-                                )
+                            # if body.context:
+                            #     response_answer_id = insert_to_collection(
+                            #         collection_name=COLLECTION_MESSAGES,
+                            #         properties={
+                            #             "session_id": body.session_id,
+                            #             "content": last_user_message.content,
+                            #             "role": last_user_message.role,
+                            #             "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            #             "agent_id": body.agent_id,
+                            #         }
+                            #     )
                                 
-                                if previous_assistant_message:
-                                    insert_to_collection(
-                                        collection_name=COLLECTION_MESSAGES,
-                                        properties={
-                                            "session_id": body.session_id,
-                                            "content": previous_assistant_message.content,
-                                            "role": "assistant",
-                                            "mode": body.mode,
-                                            "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                            "approval_status": ApprovalStatus.PENDING.value,
-                                            "response_answer_id": str(response_answer_id),
-                                            "agent_id": body.agent_id,
-                                        }
-                                    )
-                            else:
-                                response_answer_id = insert_to_collection(
-                                    collection_name=COLLECTION_MESSAGES,
-                                    properties={
-                                        "session_id": body.session_id,
-                                        "content": full_response,
-                                        "thought": thought_response,
-                                        "role": "assistant",
-                                        "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                        "mode": body.mode,
-                                        "agent_id": body.agent_id,
-                                    }
-                                )
-                                question_id = insert_to_collection(
-                                    collection_name=COLLECTION_MESSAGES,
-                                    properties={
-                                        "session_id": body.session_id,
-                                        "content": last_user_message.content,
-                                        "role": last_user_message.role,
-                                        "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-                                        "mode": body.mode,
-                                        "response_answer_id": str(response_answer_id),
-                                        "approval_status": ApprovalStatus.PENDING.value,
-                                        "agent_id": body.agent_id,
-                                    }
-                                )
+                            #     if previous_assistant_message:
+                            #         insert_to_collection(
+                            #             collection_name=COLLECTION_MESSAGES,
+                            #             properties={
+                            #                 "session_id": body.session_id,
+                            #                 "content": previous_assistant_message.content,
+                            #                 "role": "assistant",
+                            #                 "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                            #                 "approval_status": ApprovalStatus.PENDING.value,
+                            #                 "response_answer_id": str(response_answer_id),
+                            #                 "agent_id": body.agent_id,
+                            #             }
+                            #         )
+                            # else:
+                            response_answer_id = insert_to_collection(
+                                collection_name=COLLECTION_MESSAGES,
+                                properties={
+                                    "session_id": body.session_id,
+                                    "content": full_response,
+                                    "thought": thought_response,
+                                    "role": "assistant",
+                                    "created_at": (user_time + timedelta(milliseconds=2000)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                    "agent_id": body.agent_id,
+                                }
+                            )
+                            question_id = insert_to_collection(
+                                collection_name=COLLECTION_MESSAGES,
+                                properties={
+                                    "session_id": body.session_id,
+                                    "content": last_user_message.content,
+                                    "role": last_user_message.role,
+                                    "created_at": user_time.strftime("%Y-%m-%dT%H:%M:%SZ"),
+                                    "response_answer_id": str(response_answer_id),
+                                    "approval_status": ApprovalStatus.PENDING.value,
+                                    "agent_id": body.agent_id,
+                                }
+                            )
                         chunk.metadata = {
                             "question_id": str(question_id),
                             "response_answer_id": str(response_answer_id),
