@@ -73,7 +73,7 @@ def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
     sections = search_non_vector_collection(
         collection_name=COLLECTION_CHATS,
         limit=1,
-        properties=["title", "order", "created_at", "updated_at", "mode", "context"],
+        properties=["title", "order", "created_at", "updated_at", "mode", "context", "context", "language"],
         filters=filters
     )
 

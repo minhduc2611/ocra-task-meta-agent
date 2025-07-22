@@ -34,7 +34,12 @@ def list_corpora_endpoint():
 def create_corpus():
     """Create a new RAG corpus"""
     try:
-        corpus = add_corpus()
+        body = request.json
+        if not body.get('display_name'):
+            return jsonify({"error": "display_name is required"}), 400
+        corpus = add_corpus(
+            display_name=body.get('display_name')
+        )
         return jsonify({
             "message": f"Corpus '{corpus.display_name}' created successfully",
             "corpus": {

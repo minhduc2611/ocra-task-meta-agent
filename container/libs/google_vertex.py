@@ -293,8 +293,8 @@ def read_one_file(file_id: str, corpus_id: str) -> RagFile:
     file_path = f"{full_corpus_path}/ragFiles/{file_id}"
     return rag.get_file(file_path)
 
-def add_corpus() -> RagCorpus:
-    corpus: RagCorpus = rag.create_corpus()
+def add_corpus(display_name: str) -> RagCorpus:
+    corpus: RagCorpus = rag.create_corpus(display_name=display_name)
     return corpus
 
 def get_corpus(corpus_id: str) -> RagCorpus:
