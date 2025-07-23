@@ -20,6 +20,7 @@ import logging
 from datetime import datetime
 from typing import Dict, Any
 from constants.separators import STARTING_SEPARATOR, ENDING_SEPARATOR
+import asyncio
 logger = logging.getLogger(__name__)
 from google.genai import Client
 from google.genai import types
@@ -275,6 +276,33 @@ def add_file(file: FileStorage, corpus_id: str) -> str:
                 except OSError as e:
                     print(f"Warning: Could not remove temporary file {temp_file_path}: {e}")
                 
+async def add_file_async(file: FileStorage, corpus_id: str) -> str:
+    """Async wrapper for add_file function to support concurrent uploads"""
+    loop = asyncio.get_event_loop()
+    # Run the synchronous add_file function in a thread pool executor
+    return await loop.run_in_executor(None, add_file, file, corpus_id)
+
+async def upload_temp_file_async(temp_file_path: str, display_name: str, corpus_id: str) -> str:
+    """Async function to upload a file from a temporary path to RAG corpus"""
+    loop = asyncio.get_event_loop()
+    
+    def upload_temp_file():
+        full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
+        try:
+            rag_file: RagFile = rag.upload_file(
+                corpus_name=full_corpus_path,
+                display_name=display_name,
+                path=temp_file_path,
+                transformation_config=TRANSFORMATION_CONFIG,
+            )
+            return f"File '{display_name}' uploaded successfully to RagCorpus. RagFile ID: {rag_file.name}"
+        except Exception as e:
+            print(f"Error uploading file: {e}")
+            raise Exception(f"Error uploading file: {e}")
+    
+    # Run the upload in a thread pool executor
+    return await loop.run_in_executor(None, upload_temp_file)
+
 def remove_file(file_id: str, corpus_id: str) -> str:
     full_corpus_path = f"projects/{PROJECT_ID}/locations/{RAG_LOCATION}/ragCorpora/{corpus_id}"
     file_path = f"{full_corpus_path}/ragFiles/{file_id}"

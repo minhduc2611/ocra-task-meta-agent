@@ -7,9 +7,6 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-# Default corpus ID - you can make this configurable
-DEFAULT_CORPUS_ID = "6917529027641081856"
-
 @app.route('/api/v1/rag/files', methods=['POST'])
 @login_required
 def upload_rag_file():
