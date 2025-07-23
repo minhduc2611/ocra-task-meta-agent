@@ -13,6 +13,7 @@ from services.handle_rag import handle_upload_file
 import json
 import logging
 import uuid
+import asyncio
 from data_classes.common_classes import AskRequest, Message, Language
 
 from __init__ import app, login_required
@@ -223,8 +224,27 @@ def upload_file_endpoint(agent_id):
         
         def generate():
             try:
-                for update in handle_upload_file(files, agent_id):
-                    yield f"{json.dumps(update)}\n\n"
+                # Create new event loop for this thread if needed
+                try:
+                    loop = asyncio.get_event_loop()
+                except RuntimeError:
+                    loop = asyncio.new_event_loop()
+                    asyncio.set_event_loop(loop)
+                
+                # Run the async generator
+                async def async_generate():
+                    async for update in handle_upload_file(files, agent_id):
+                        yield f"{json.dumps(update)}\n\n"
+                
+                # Convert async generator to sync generator
+                async_gen = async_generate()
+                while True:
+                    try:
+                        result = loop.run_until_complete(async_gen.__anext__())
+                        yield result
+                    except StopAsyncIteration:
+                        break
+                        
             except Exception as e:
                 error_response = {
                     "error": str(e),
