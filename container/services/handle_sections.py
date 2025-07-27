@@ -40,7 +40,9 @@ def create_section(section: Section) -> Optional[Dict[str, Any]]:
         "created_at": now,
         "updated_at": now,
         "author": section.author,
-        "mode": section.mode
+        "language": section.language,
+        "context": section.context,
+        "agent_id": section.agent_id,
     }
     section_uuid = insert_to_collection(COLLECTION_CHATS, properties, section.uuid)
     return get_section_by_id(section_uuid)
@@ -54,7 +56,7 @@ def get_sections(email: str, limit: int = 10, offset: int = 0) -> tuple[List[Dic
         collection_name=COLLECTION_CHATS,
         limit=limit,
         offset=offset,
-        properties=["title", "order", "created_at", "updated_at", "mode"],
+        properties=["title", "order", "created_at", "updated_at", "context", "language", "agent_id"],
         sort=Sort.by_property("created_at", ascending=False),
         filters=filters
     )
@@ -73,7 +75,7 @@ def get_section_by_id(section_id: str) -> Optional[Dict[str, Any]]:
     sections = search_non_vector_collection(
         collection_name=COLLECTION_CHATS,
         limit=1,
-        properties=["title", "order", "created_at", "updated_at", "mode", "context", "context", "language"],
+        properties=["title", "order", "created_at", "updated_at", "context", "language", "agent_id"],
         filters=filters
     )
 
@@ -88,7 +90,7 @@ def update_section(section_id: str, **kwargs) -> bool:
     
     Args:
         section_id: The UUID of the section to update
-        **kwargs: Fields to update (title, order, mode, etc.)
+        **kwargs: Fields to update (title, order, etc.)
     
     Returns:
         bool: True if update successful, False otherwise
@@ -139,5 +141,5 @@ def search_sections(query: str, limit: int = 10) -> List[Dict[str, Any]]:
         collection_name=COLLECTION_CHATS,
         query=query,
         limit=limit,
-        properties=["title", "order", "created_at", "updated_at", "mode", "context"]
+        properties=["title", "order", "created_at", "updated_at", "context"]
     ) 
