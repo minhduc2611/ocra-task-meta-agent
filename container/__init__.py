@@ -13,7 +13,7 @@ from services.handle_api_keys import validate_api_key
 
 app = Flask(__name__)
 CORS(app, expose_headers=["X-Total-Count", "X-Page-Size", "X-Page-Number", "X-Total-Pages"],
-     origins=["https://buddha-rag-prod.netlify.app", "http://localhost:3000"],
+     origins=["https://buddha-rag-prod.netlify.app", "http://localhost:3000", "https://giac.ngo"],
      allow_headers=["Content-Type", "Authorization"],
      methods=["POST", "OPTIONS", "GET", "PUT", "DELETE"],
      )
