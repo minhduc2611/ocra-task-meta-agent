@@ -47,6 +47,7 @@ COLLECTION_AGENTS = "Agents"
 COLLECTION_AGENT_SETTINGS = "AgentSettings"
 COLLECTION_FINE_TUNING_MODELS = "FineTuningModels"
 COLLECTION_API_KEYS = "ApiKeys"
+COLLECTION_PASSWORD_RESET_TOKENS = "PasswordResetTokens"
 
 def initialize_schema() -> None:
     """Initialize the Weaviate schema if it doesn't exist."""
@@ -263,6 +264,19 @@ def initialize_schema() -> None:
             ]
         )
         print("🙌🏼 Collection AgentSettings created successfully")
+    exists = client.collections.exists(COLLECTION_PASSWORD_RESET_TOKENS)
+    if not exists:
+        client.collections.create(
+            name=COLLECTION_PASSWORD_RESET_TOKENS,
+            properties=[
+                wvc.config.Property(name="email", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="token", data_type=wvc.config.DataType.TEXT),
+                wvc.config.Property(name="expires_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="created_at", data_type=wvc.config.DataType.DATE),
+                wvc.config.Property(name="used", data_type=wvc.config.DataType.BOOL),
+            ]
+        )
+        print("🙌🏼 Collection PasswordResetTokens created successfully")
     print("🙌🏼 Schema initialized successfully")
 
 def upload_documents(documents: List[Dict[str, str]]) -> Dict[str, Any]:

@@ -281,3 +281,20 @@ class UpdateApiKeyRequest:
     permissions: Optional[List[str]] = None
     status: Optional[ApiKeyStatus | str] = None
     expires_at: Optional[datetime] = None
+
+@dataclass
+class PasswordResetRequest:
+    email: str
+
+@dataclass
+class ResetPasswordRequest:
+    token: str
+    new_password: str
+
+@dataclass
+class PasswordResetToken:
+    email: str
+    token: str
+    expires_at: datetime
+    created_at: Optional[datetime] = None
+    used: Optional[bool] = False
