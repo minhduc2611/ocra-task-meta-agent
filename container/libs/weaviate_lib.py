@@ -175,6 +175,9 @@ def initialize_schema() -> None:
     try:
         chats_collection = client.collections.get(COLLECTION_CHATS)
         chats_collection.config.add_property(
+            wvc.config.Property(name="agent_id", data_type=wvc.config.DataType.UUID),
+        )
+        chats_collection.config.add_property(
             wvc.config.Property(name="context", data_type=wvc.config.DataType.TEXT),
         )
         print("🙌🏼 Collection Sections updated successfully")
